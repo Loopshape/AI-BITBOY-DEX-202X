@@ -81,15 +81,21 @@
               <div class="stack" style="gap:16px;">
                   <div class="row">
                     <input type="number" id="from-amount" placeholder="0.0">
-                    <select id="from-token" style="flex-grow:1;">
-                      <option>Loading tokens...</option>
-                    </select>
+                    <div class="token-select-wrapper" style="flex-grow: 1;">
+                      <select id="from-token">
+                        <option>Loading tokens...</option>
+                      </select>
+                      <button id="refresh-from-token-btn" class="refresh-btn" data-tooltip="Refresh token list">&#x21bb;</button>
+                    </div>
                   </div>
                   <div class="row">
                     <input type="number" id="to-amount" placeholder="0.0" disabled>
-                    <select id="to-token" style="flex-grow:1;">
-                       <option>Loading tokens...</option>
-                    </select>
+                    <div class="token-select-wrapper" style="flex-grow: 1;">
+                      <select id="to-token">
+                         <option>Loading tokens...</option>
+                      </select>
+                      <button id="refresh-to-token-btn" class="refresh-btn" data-tooltip="Refresh token list">&#x21bb;</button>
+                    </div>
                   </div>
                   <button id="swap-btn" disabled>Swap</button>
                   <button id="ai-signal-btn" disabled>Get AI Trade Signal</button>
@@ -371,7 +377,8 @@
 </div>
 <div id="term">
   <div id="termOutput"></div>
-  <input id="termInput" placeholder="Ask AI or type command..." />
+  <div id="termSuggestionsContainer"><span id="termSuggestion"></span></div>
+  <input id="termInput" placeholder="Ask AI or type command..." autocomplete="off" />
 </div>
 <div id="hudMenu" class="ctxMenu">
   <div id="hudReset">🔄 Reset Position</div>

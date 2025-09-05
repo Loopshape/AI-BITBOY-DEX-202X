@@ -544,6 +544,87 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
     // ===============================================
+    // TOKEN DATA & DEX UI
+    // ===============================================
+    let tokenListCache: { id: string; symbol: string; name: string }[] = [];
+
+    async function fetchAndPopulateTokens() {
+        logToTerminal('Fetching token list from CoinGecko...', 'info');
+        const fromTokenBtn = document.getElementById('refresh-from-token-btn') as HTMLButtonElement;
+        const toTokenBtn = document.getElementById('refresh-to-token-btn') as HTMLButtonElement;
+        if (fromTokenBtn) fromTokenBtn.disabled = true;
+        if (toTokenBtn) toTokenBtn.disabled = true;
+
+        const fromTokenSelect = document.getElementById('from-token') as HTMLSelectElement;
+        const toTokenSelect = document.getElementById('to-token') as HTMLSelectElement;
+
+        try {
+            const response = await fetch(getCoinGeckoUrl('/coins/list'));
+            if (!response.ok) {
+                throw new Error(`Failed to fetch token list. Status: ${response.status}`);
+            }
+            const tokens: { id: string; symbol: string; name: string }[] = await response.json();
+            tokenListCache = tokens.sort((a, b) => a.symbol.localeCompare(b.symbol)); // Sort alphabetically
+            
+            populateTokenDropdowns(tokenListCache);
+            logToTerminal(`Successfully fetched and populated ${tokenListCache.length} tokens.`, 'ok');
+
+        } catch (error) {
+            logToTerminal(`Error fetching tokens: ${(error as Error).message}`, 'error');
+            if (fromTokenSelect) fromTokenSelect.innerHTML = '<option>Error loading tokens</option>';
+            if (toTokenSelect) toTokenSelect.innerHTML = '<option>Error loading tokens</option>';
+        } finally {
+            if (fromTokenBtn) fromTokenBtn.disabled = false;
+            if (toTokenBtn) toTokenBtn.disabled = false;
+        }
+    }
+
+    function populateTokenDropdowns(tokens: { id: string; symbol: string; name: string }[]) {
+        const fromTokenSelect = document.getElementById('from-token') as HTMLSelectElement;
+        const toTokenSelect = document.getElementById('to-token') as HTMLSelectElement;
+
+        if (!fromTokenSelect || !toTokenSelect) return;
+
+        const savedFromToken = localStorage.getItem(FROM_TOKEN_KEY) || 'bitcoin';
+        const savedToToken = localStorage.getItem(TO_TOKEN_KEY) || 'ethereum';
+
+        fromTokenSelect.innerHTML = '';
+        toTokenSelect.innerHTML = '';
+        
+        if (tokens.length === 0) {
+             fromTokenSelect.innerHTML = '<option>No tokens found</option>';
+             toTokenSelect.innerHTML = '<option>No tokens found</option>';
+             return;
+        }
+
+        tokens.forEach(token => {
+            const option = document.createElement('option');
+            option.value = token.id;
+            option.textContent = `${token.name} (${token.symbol.toUpperCase()})`;
+            fromTokenSelect.appendChild(option.cloneNode(true));
+            toTokenSelect.appendChild(option);
+        });
+
+        if (Array.from(fromTokenSelect.options).some(o => o.value === savedFromToken)) {
+            fromTokenSelect.value = savedFromToken;
+        }
+        if (Array.from(toTokenSelect.options).some(o => o.value === savedToToken)) {
+            toTokenSelect.value = savedToToken;
+        }
+    }
+    
+    // Listeners for DEX UI
+    document.getElementById('refresh-from-token-btn')?.addEventListener('click', fetchAndPopulateTokens);
+    document.getElementById('refresh-to-token-btn')?.addEventListener('click', fetchAndPopulateTokens);
+    
+    document.getElementById('from-token')?.addEventListener('change', (e) => {
+        localStorage.setItem(FROM_TOKEN_KEY, (e.target as HTMLSelectElement).value);
+    });
+    document.getElementById('to-token')?.addEventListener('change', (e) => {
+        localStorage.setItem(TO_TOKEN_KEY, (e.target as HTMLSelectElement).value);
+    });
+
+    // ===============================================
     // RECURRING TASKS
     // ===============================================
     const recurringTaskForm = document.getElementById('recurring-task-form') as HTMLFormElement;
@@ -751,6 +832,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function initialize() {
       logToTerminal('Initializing NEMODIAN COREMOVEMENT 202X...', 'info');
       loadHudAndTerminalSettings();
+      fetchAndPopulateTokens();
       loadRecurringTasks();
       loadKanbanTasks();
       updateTradeButtonsState();
