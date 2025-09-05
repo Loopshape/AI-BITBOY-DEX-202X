@@ -761,6 +761,7 @@ input[type=range]::-moz-range-thumb {
 #termOutput .log-user-prompt { color: #fff; }
 #termOutput .log-user-prompt .log-content::before { content: '> '; }
 #termOutput .log-ai-assistant { color: var(--color-primary-neon); }
+#termOutput .log-ai-assistant .log-content::before { content: '⚡ '; }
 
 #termInput {
   border: none;

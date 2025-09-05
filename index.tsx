@@ -1,5 +1,4 @@
 
-
 import * as bip39 from 'bip39';
 import { Web3Modal } from '@web3modal/standalone';
 import { ethers } from 'https://esm.run/ethers';
@@ -46,23 +45,27 @@ VANTA.NET({
 // GLOBAL TERMINAL LOGGER
 // ===============================================
 const termOutput = document.getElementById('termOutput') as HTMLElement;
-function logToTerminal(message: string, type: string = 'info', showTimestamp: boolean = true) {
+function logToTerminal(message: string, type: string = 'info') {
   const logEntry = document.createElement('div');
   logEntry.className = `log-${type}`;
-  
-  if (showTimestamp) {
+
+  const isSystemLog = ['info', 'ok', 'warn', 'error'].includes(type);
+
+  if (isSystemLog) {
     const timestamp = new Date().toLocaleTimeString();
     const timeSpan = document.createElement('span');
     timeSpan.className = 'log-timestamp';
     timeSpan.textContent = `[${timestamp}]`;
     logEntry.appendChild(timeSpan);
   }
-  
+
   const msgSpan = document.createElement('span');
   msgSpan.className = 'log-content';
-  msgSpan.textContent = ` ${message}`; // Add space for separation
+  // Add leading space only for system logs that have a timestamp.
+  // Other types like 'user-prompt' will have their prefix/spacing handled by CSS.
+  msgSpan.textContent = isSystemLog ? ` ${message}` : message;
   logEntry.appendChild(msgSpan);
-  
+
   gsap.from(logEntry, { duration: 0.5, opacity: 0, y: 10, ease: "power2.out" });
   termOutput.appendChild(logEntry);
   termOutput.scrollTop = termOutput.scrollHeight;
@@ -315,8 +318,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const savedPos = localStorage.getItem("hudWidgetsPos");
       if (savedPos) {
-          const p = JSON.parse(savedPos);
-          $hudWidgets.css({ top: p.top, left: p.left, right: 'auto' });
+          try {
+            const p = JSON.parse(savedPos);
+            if(p && typeof p === 'object' && p.top && p.left) {
+              $hudWidgets.css({ top: p.top, left: p.left, right: 'auto' });
+            }
+          } catch(e) {
+            localStorage.removeItem("hudWidgetsPos");
+          }
       }
   }
 
@@ -380,18 +389,13 @@ document.addEventListener('DOMContentLoaded', () => {
                   await updateWalletInfo(web3Provider);
               }
           } else if (connector === 'walletConnect') {
-              // Fix: The method getWalletProvider() is not available on modern Web3Modal versions.
-              // Instead, we subscribe to provider changes before opening the modal.
               let provider: any = null;
-              // FIX: The `subscribeProvider` method is not available on this `Web3Modal` version.
-              // Replaced with `subscribeState` which is the modern equivalent for observing provider changes.
-              // Cast to `any` to bypass strict type-checking as the method might be dynamically available.
               const unsubscribe = (web3Modal as any).subscribeState((newState: any) => {
                   provider = newState.provider;
               });
 
               await web3Modal.openModal();
-              unsubscribe(); // Unsubscribe after modal is closed.
+              unsubscribe();
               
               if (provider) {
                   logToTerminal('Wallet connected via Web3Modal.', 'info');
@@ -412,12 +416,12 @@ document.addEventListener('DOMContentLoaded', () => {
                   await updateWalletInfo(web3Provider);
               } catch (cliError) {
                   logToTerminal(`CLI wallet connection failed: ${(cliError as Error).message}. Is a local node (like Hardhat/Anvil) with an unlocked account running at http://localhost:8545?`, 'error');
-                  disconnectWallet();
+                  await disconnectWallet();
               }
           }
       } catch (error) {
           logToTerminal(`Wallet connection failed: ${(error as Error).message}`, 'error');
-          disconnectWallet();
+          await disconnectWallet();
       }
   }
 
@@ -428,35 +432,45 @@ document.addEventListener('DOMContentLoaded', () => {
       const balance = await provider.getBalance(walletAddress);
       const network = await provider.getNetwork();
 
-      (document.getElementById('header-wallet-info') as HTMLElement).style.display = 'flex';
-      (document.getElementById('header-connect-btn') as HTMLElement).style.display = 'none';
-      (document.getElementById('header-disconnect-btn') as HTMLElement).style.display = 'block';
+      const walletInfoEl = document.getElementById('header-wallet-info');
+      if (walletInfoEl) walletInfoEl.style.display = 'flex';
+      
+      const connectBtn = document.getElementById('header-connect-btn');
+      if (connectBtn) connectBtn.style.display = 'none';
+
+      const disconnectBtn = document.getElementById('header-disconnect-btn');
+      if (disconnectBtn) disconnectBtn.style.display = 'block';
+
       if (showQrBtn) showQrBtn.style.display = 'block';
       
-      const walletStatus = document.getElementById('wallet-status-indicator') as HTMLElement;
-      walletStatus.classList.remove('disconnected');
-      walletStatus.classList.add('connected');
-      walletStatus.parentElement?.classList.add('flash-success');
-      setTimeout(() => walletStatus.parentElement?.classList.remove('flash-success'), 700);
+      const walletStatus = document.getElementById('wallet-status-indicator');
+      if(walletStatus) {
+        walletStatus.classList.remove('disconnected');
+        walletStatus.classList.add('connected');
+        walletStatus.parentElement?.classList.add('flash-success');
+        setTimeout(() => walletStatus.parentElement?.classList.remove('flash-success'), 700);
+      }
 
-
-      (document.getElementById('header-wallet-address') as HTMLElement).textContent = `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}`;
-      (document.getElementById('header-wallet-balance') as HTMLElement).textContent = `${ethers.formatEther(balance).substring(0, 6)} ETH`;
-      (document.getElementById('header-wallet-network') as HTMLElement).textContent = network.name;
+      const addressEl = document.getElementById('header-wallet-address');
+      if(addressEl) addressEl.textContent = `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}`;
+      
+      const balanceEl = document.getElementById('header-wallet-balance');
+      if(balanceEl) balanceEl.textContent = `${ethers.formatEther(balance).substring(0, 6)} ETH`;
+      
+      const networkEl = document.getElementById('header-wallet-network');
+      if(networkEl) networkEl.textContent = network.name;
       
       logToTerminal(`Wallet connected: ${walletAddress} on ${network.name}.`, 'ok');
       updateTradeButtonsState();
     } catch (error) {
         logToTerminal(`Failed to update wallet info: ${(error as Error).message}`, 'error');
-        disconnectWallet();
+        await disconnectWallet();
     }
   }
   
-  // Fix: Convert to async function to support awaiting the disconnect call.
   async function disconnectWallet() {
       if (web3Provider?.provider) {
         removeProviderEvents(web3Provider.provider);
-        // FIX: In modern Web3Modal versions, disconnection is handled by the provider (e.g., from WalletConnect), not the modal instance itself.
         if (typeof (web3Provider.provider as any).disconnect === 'function') {
           await (web3Provider.provider as any).disconnect();
         }
@@ -465,15 +479,22 @@ document.addEventListener('DOMContentLoaded', () => {
       web3Provider = null;
       walletAddress = null;
       
-      (document.getElementById('header-wallet-info') as HTMLElement).style.display = 'none';
-      (document.getElementById('header-connect-btn') as HTMLElement).style.display = 'block';
-      (document.getElementById('header-disconnect-btn') as HTMLElement).style.display = 'none';
+      const walletInfoEl = document.getElementById('header-wallet-info');
+      if(walletInfoEl) walletInfoEl.style.display = 'none';
+      
+      const connectBtn = document.getElementById('header-connect-btn');
+      if(connectBtn) connectBtn.style.display = 'block';
+
+      const disconnectBtn = document.getElementById('header-disconnect-btn');
+      if(disconnectBtn) disconnectBtn.style.display = 'none';
+
       if (showQrBtn) showQrBtn.style.display = 'none';
 
-
-      const walletStatus = document.getElementById('wallet-status-indicator') as HTMLElement;
-      walletStatus.classList.remove('connected');
-      walletStatus.classList.add('disconnected');
+      const walletStatus = document.getElementById('wallet-status-indicator');
+      if (walletStatus) {
+        walletStatus.classList.remove('connected');
+        walletStatus.classList.add('disconnected');
+      }
       
       logToTerminal('Wallet disconnected.', 'info');
       updateTradeButtonsState();
@@ -505,6 +526,237 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusEl = document.getElementById('api-status');
     if (!statusEl) return;
     try {
+      statusEl.textContent = 'Pinging...';
+      statusEl.className = 'small mono';
       const response = await fetch(getCoinGeckoUrl('/ping'));
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const data = await response.json
+      const data = await response.json();
+      if (data && data.gecko_says) {
+          logToTerminal(`CoinGecko API check successful: ${data.gecko_says}`, 'ok');
+          statusEl.textContent = 'Status: OK';
+      } else {
+          throw new Error('Unexpected API response.');
+      }
+    } catch (err) {
+        if(statusEl) statusEl.textContent = 'Status: Error';
+        logToTerminal(`CoinGecko API check failed: ${(err as Error).message}`, 'error');
+    }
+  }
+
+    // ===============================================
+    // RECURRING TASKS
+    // ===============================================
+    const recurringTaskForm = document.getElementById('recurring-task-form') as HTMLFormElement;
+    const recurringTaskInput = document.getElementById('recurring-task-input') as HTMLInputElement;
+    const recurringTaskSelect = document.getElementById('recurring-task-select') as HTMLSelectElement;
+    const recurringTaskList = document.getElementById('recurring-task-list') as HTMLElement;
+    let recurringTasks: { id: number; text: string; frequency: string; }[] = [];
+
+    function saveRecurringTasks() {
+        localStorage.setItem(RECURRING_TASKS_KEY, JSON.stringify(recurringTasks));
+    }
+
+    function renderRecurringTask(task: { id: number; text: string; frequency: string; }) {
+        const taskElement = document.createElement('div');
+        taskElement.className = 'row';
+        taskElement.style.justifyContent = 'space-between';
+        taskElement.dataset.id = task.id.toString();
+        taskElement.innerHTML = `
+            <span>${task.text} <span class="tag">${task.frequency}</span></span>
+            <button class="delete-task-btn" style="padding: 2px 6px; font-size: .8em;">X</button>
+        `;
+        taskElement.querySelector('.delete-task-btn')?.addEventListener('click', () => {
+            recurringTasks = recurringTasks.filter(t => t.id !== task.id);
+            saveRecurringTasks();
+            taskElement.remove();
+        });
+        recurringTaskList.appendChild(taskElement);
+    }
+
+    function loadRecurringTasks() {
+        const savedTasksJSON = localStorage.getItem(RECURRING_TASKS_KEY);
+        if (savedTasksJSON) {
+            try {
+                const parsedTasks = JSON.parse(savedTasksJSON);
+                if (Array.isArray(parsedTasks)) {
+                    recurringTasks = parsedTasks;
+                } else {
+                     throw new Error("Data is not an array");
+                }
+            } catch (e) {
+                logToTerminal('Recurring tasks data in localStorage is corrupted. Resetting.', 'warn');
+                localStorage.removeItem(RECURRING_TASKS_KEY);
+                recurringTasks = [];
+            }
+        }
+        recurringTaskList.innerHTML = '';
+        recurringTasks.forEach(renderRecurringTask);
+    }
+
+    recurringTaskForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const text = recurringTaskInput.value.trim();
+        if (text) {
+            const newTask = {
+                id: Date.now(),
+                text,
+                frequency: recurringTaskSelect.value,
+            };
+            recurringTasks.push(newTask);
+            saveRecurringTasks();
+            renderRecurringTask(newTask);
+            recurringTaskInput.value = '';
+        }
+    });
+
+    // ===============================================
+    // KANBAN BOARD
+    // ===============================================
+    let kanbanTasks: { [key: string]: { id: number, title: string, desc: string }[] } = {
+        backlog: [],
+        inprogress: [],
+        completed: []
+    };
+
+    function saveKanbanTasks() {
+        localStorage.setItem(KANBAN_TASKS_KEY, JSON.stringify(kanbanTasks));
+    }
+
+    function loadKanbanTasks() {
+        const savedTasksJSON = localStorage.getItem(KANBAN_TASKS_KEY);
+        if (savedTasksJSON) {
+            try {
+                const parsed = JSON.parse(savedTasksJSON);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) &&
+                    Array.isArray(parsed.backlog) && Array.isArray(parsed.inprogress) && Array.isArray(parsed.completed)) {
+                    kanbanTasks = parsed;
+                } else {
+                    throw new Error("Invalid Kanban data structure");
+                }
+            } catch (e) {
+                logToTerminal('Kanban tasks data in localStorage is corrupted. Resetting.', 'warn');
+                localStorage.removeItem(KANBAN_TASKS_KEY);
+                kanbanTasks = { backlog: [], inprogress: [], completed: [] };
+            }
+        }
+        renderAllKanbanTasks();
+    }
+    
+    function renderKanbanTask(task: { id: number, title: string, desc: string }, status: string) {
+        const column = document.querySelector(`.kanban-column[data-status="${status}"] .kanban-tasks`);
+        if (!column) return;
+
+        const taskEl = document.createElement('div');
+        taskEl.className = 'kanban-task';
+        taskEl.dataset.id = task.id.toString();
+        taskEl.draggable = true;
+        taskEl.innerHTML = `
+            <button class="delete-task-btn" data-id="${task.id}" data-status="${status}">X</button>
+            <strong>${task.title}</strong>
+            <p>${task.desc}</p>
+        `;
+
+        taskEl.addEventListener('dragstart', handleDragStart);
+        column.appendChild(taskEl);
+    }
+    
+    function renderAllKanbanTasks() {
+        document.querySelectorAll('.kanban-tasks').forEach(col => col.innerHTML = '');
+        Object.keys(kanbanTasks).forEach(status => {
+            kanbanTasks[status].forEach(task => renderKanbanTask(task, status));
+        });
+        document.querySelectorAll('.delete-task-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const target = e.currentTarget as HTMLElement;
+                const id = parseInt(target.dataset.id || '0');
+                const status = target.dataset.status || '';
+                if(id && status) {
+                    kanbanTasks[status] = kanbanTasks[status].filter(t => t.id !== id);
+                    saveKanbanTasks();
+                    renderAllKanbanTasks();
+                }
+            });
+        });
+    }
+
+    document.getElementById('add-task-btn')?.addEventListener('click', () => {
+        const titleInput = document.getElementById('new-task-title') as HTMLInputElement;
+        const descInput = document.getElementById('new-task-desc') as HTMLTextAreaElement;
+        const title = titleInput.value.trim();
+        const desc = descInput.value.trim();
+
+        if (title) {
+            const newTask = { id: Date.now(), title, desc };
+            kanbanTasks.backlog.push(newTask);
+            saveKanbanTasks();
+            renderAllKanbanTasks();
+            titleInput.value = '';
+            descInput.value = '';
+        }
+    });
+
+    // Kanban Drag & Drop
+    let draggedItemId: number | null = null;
+    let originalStatus: string | null = null;
+    
+    function handleDragStart(e: DragEvent) {
+        const target = e.target as HTMLElement;
+        draggedItemId = parseInt(target.dataset.id || '0');
+        originalStatus = (target.closest('.kanban-column') as HTMLElement)?.dataset.status || null;
+        target.classList.add('dragging');
+        e.dataTransfer!.effectAllowed = 'move';
+    }
+
+    document.querySelectorAll('.kanban-column').forEach(col => {
+        col.addEventListener('dragover', (e: DragEvent) => {
+            e.preventDefault();
+            e.dataTransfer!.dropEffect = 'move';
+            (e.currentTarget as HTMLElement).classList.add('drag-over');
+        });
+        col.addEventListener('dragleave', (e: DragEvent) => {
+            (e.currentTarget as HTMLElement).classList.remove('drag-over');
+        });
+        col.addEventListener('drop', (e: DragEvent) => {
+            e.preventDefault();
+            (e.currentTarget as HTMLElement).classList.remove('drag-over');
+            const newStatus = (e.currentTarget as HTMLElement).dataset.status;
+
+            if (newStatus && originalStatus && draggedItemId && newStatus !== originalStatus) {
+                const taskIndex = kanbanTasks[originalStatus].findIndex(t => t.id === draggedItemId);
+                if (taskIndex > -1) {
+                    const [task] = kanbanTasks[originalStatus].splice(taskIndex, 1);
+                    kanbanTasks[newStatus].push(task);
+                    saveKanbanTasks();
+                    renderAllKanbanTasks();
+                }
+            }
+            document.querySelector('.kanban-task.dragging')?.classList.remove('dragging');
+            draggedItemId = null;
+            originalStatus = null;
+        });
+    });
+
+    // ===============================================
+    // DUMMY/MOCK FUNCTIONS
+    // ===============================================
+    function updateTradeButtonsState() {
+      const connected = !!walletAddress;
+      const tradeButtons = document.querySelectorAll('.trade-btn, #swap-btn, #ai-signal-btn') as NodeListOf<HTMLButtonElement>;
+      tradeButtons.forEach(btn => btn.disabled = !connected);
+    }
+    
+    // ===============================================
+    // INITIALIZATION
+    // ===============================================
+    function initialize() {
+      logToTerminal('Initializing NEMODIAN COREMOVEMENT 202X...', 'info');
+      loadHudAndTerminalSettings();
+      loadRecurringTasks();
+      loadKanbanTasks();
+      updateTradeButtonsState();
+      logToTerminal('System ready.', 'ok');
+      $hudStatus.text('Status: Standby');
+    }
+
+    initialize();
+});
