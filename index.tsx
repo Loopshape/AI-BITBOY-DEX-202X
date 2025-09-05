@@ -290,7 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  async function queryAiCore(prompt: string, isJsonMode = false) {
+  async function queryAiCore(prompt: string, isJsonMode = false, responseType: 'generic' | 'tradeSignal' = 'generic') {
     if (!aiSettings.apiUrl || !aiSettings.model) {
         logToConsole('Ollama API URL or model is not configured. Please check System settings.', 'error');
         return null;
@@ -329,6 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let buffer = '';
+            let fullResponseText = ''; // Accumulator for raw text
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -343,7 +344,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         try {
                             const chunk = JSON.parse(line);
                             if (chunk.response) {
-                                responseContent.innerHTML += chunk.response.replace(/\n/g, '<br>');
+                                if (responseType === 'tradeSignal') {
+                                    fullResponseText += chunk.response;
+                                    // Re-render the entire formatted response on each chunk for robust formatting
+                                    const formattedHtml = fullResponseText
+                                        .replace(/\n/g, '<br>')
+                                        .replace(/(Action:|Rationale:|Entry Price:|Target Price:|Stop-Loss:|Confidence:)/g, '<strong class="log-info">$1</strong>')
+                                        .replace(/(Risks & Considerations)/g, '<br><hr class="sep" style="margin: 12px 0;"><h4 class="log-warn">$1</h4>')
+                                        .replace(/(<br>\s*[\*\-]\s)/g, '<br>&bull;&nbsp;');
+                                    responseContent.innerHTML = formattedHtml;
+                                } else {
+                                    // Default behavior for generic responses
+                                    responseContent.innerHTML += chunk.response.replace(/\n/g, '<br>');
+                                }
                                 consoleElement.scrollTop = consoleElement.scrollHeight;
                             }
                         } catch (e) {
@@ -666,12 +679,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const toTokenText = toTokenSelect.selectedOptions[0].text;
 
     const parseTokenText = (text: string) => {
-        const match = text.match(/(.+) \((.+)\)/);
+        // Fix: Use a non-greedy regex to correctly capture name and symbol
+        const match = text.match(/(.+) \(([^)]+)\)/);
         if (match) {
             return { name: match[1].trim(), symbol: match[2].trim() };
         }
-        const parts = text.split('(');
-        const name = parts[0].trim();
+        // Fallback for options without parentheses
+        const name = text.trim();
         return { name: name, symbol: name.toUpperCase() };
     };
 
@@ -760,7 +774,7 @@ Based on this data, provide a clear signal including:
 After the signal, add a section titled "Risks & Considerations" with a brief, bulleted list of potential risks for this specific trade, derived from the provided market data.
     `;
 
-    await queryAiCore(prompt);
+    await queryAiCore(prompt, false, 'tradeSignal');
   });
 
   // Leveraged Trading Logic
@@ -786,8 +800,17 @@ After the signal, add a section titled "Risks & Considerations" with a brief, bu
     const toTokenSelect = document.getElementById('to-token') as HTMLSelectElement;
     const timeframeSelect = document.getElementById('leverage-timeframe') as HTMLSelectElement;
 
-    const fromSymbol = fromTokenSelect.selectedOptions[0].text.match(/\(([^)]+)\)/)[1];
-    const toSymbol = toTokenSelect.selectedOptions[0].text.match(/\(([^)]+)\)/)[1];
+    // Fix: Add null checks for regex matching to prevent crashing if token names are not in the expected format.
+    const fromMatch = fromTokenSelect.selectedOptions[0].text.match(/\(([^)]+)\)/);
+    const toMatch = toTokenSelect.selectedOptions[0].text.match(/\(([^)]+)\)/);
+
+    if (!fromMatch || !toMatch) {
+        logToConsole('Could not parse token symbols. Ensure tokens are loaded correctly before trading.', 'error');
+        return;
+    }
+
+    const fromSymbol = fromMatch[1];
+    const toSymbol = toMatch[1];
     const leverage = leverageSlider.value;
     const timeframe = timeframeSelect.selectedOptions[0].text;
     
@@ -1203,10 +1226,12 @@ After the signal, add a section titled "Risks & Considerations" with a brief, bu
             const storedState = localStorage.getItem(KANBAN_TASKS_KEY);
             if (storedState) {
                 const parsedState = JSON.parse(storedState);
-                // Basic validation
-                if (parsedState.backlog && parsedState.inprogress && parsedState.completed) {
+                // Fix: More robust validation to ensure all keys exist and are arrays. Prevents errors with corrupted data or empty columns.
+                if (parsedState && Array.isArray(parsedState.backlog) && Array.isArray(parsedState.inprogress) && Array.isArray(parsedState.completed)) {
                     kanbanTasks = parsedState;
                     logToConsole('Loaded Kanban board from local storage.', 'ok');
+                } else {
+                    logToConsole('Kanban data in local storage is corrupted or in an old format. Using defaults.', 'warn');
                 }
             }
         } catch (e) {
