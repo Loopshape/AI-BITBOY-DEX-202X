@@ -9,10 +9,29 @@
 <body>
 <div class="wrapper">
   <canvas class="fullscreen-adapter" id="vanta-canvas"></canvas>
+  
+  <!-- Parallax Background Layers -->
+  <div class="parallax-layer"></div>
+  <div class="parallax-layer"></div>
+  <div class="parallax-layer"></div>
+  <div class="parallax-layer"></div>
+  <div class="parallax-layer"></div>
+  <div class="parallax-layer"></div>
+  <div class="parallax-layer"></div>
+  <div class="parallax-layer"></div>
+  <div class="parallax-layer"></div>
+  <div class="parallax-layer"></div>
+  <div class="parallax-layer"></div>
+  <div class="parallax-layer"></div>
 
   <div class="content">
     <h1>NEMODIAN COREMOVEMENT 202X</h1>
     <p class="small" style="margin-top:4px; margin-bottom:20px;">AI STRATEGY-NFT:AGENT Integration</p>
+    
+    <div class="prominent-buttons-container">
+        <button class="prominent-btn" data-tab-target="dex-tab-hrc">HRC203X</button>
+        <button class="prominent-btn" data-tab-target="dex-tab-nft">NFT Friend</button>
+    </div>
 
     <div class="card" style="margin-bottom: 16px; padding: 8px;">
         <div id="tradingview-widget-container"></div>
@@ -27,10 +46,12 @@
           <div id="console"></div>
         </div>
 
-        <div class="card">
+        <div class="card" id="main-card">
           <div class="tabs">
             <button class="tab-button active" data-tab="dex-tab-swap">BITBOY AI-DEX</button>
-            <button class="tab-button" data-tab="dex-tab-crypto">Cryptographic Operations</button>
+            <button class="tab-button" data-tab="dex-tab-hrc">HRC203X</button>
+            <button class="tab-button" data-tab="dex-tab-nft">NFT Friend</button>
+            <button class="tab-button" data-tab="dex-tab-crypto">Crypto Ops</button>
             <button class="tab-button" data-tab="dex-tab-seed">Seed Tool</button>
             <button class="tab-button" data-tab="dex-tab-system">System</button>
           </div>
@@ -116,6 +137,56 @@
               </div>
             </div>
           </div>
+          
+          <!-- HRC203X TAB -->
+          <div id="dex-tab-hrc" class="tab-content">
+              <div class="stack">
+                  <h3>HRC203X: Pools & CRM</h3>
+                  <p class="small">Manage projects, interest pools, and contacts using this integrated Kanban board. Data is saved locally.</p>
+                  <hr class="sep">
+                  <div id="kanban-container" class="stack">
+                      <div class="stack" style="gap: 8px; margin-bottom: 16px;">
+                          <input type="text" id="new-task-title" placeholder="New Task Title...">
+                          <textarea id="new-task-desc" rows="2" placeholder="Task description (optional)..."></textarea>
+                          <button id="add-task-btn" class="button-secondary" style="align-self: flex-start;">Add Task to Backlog</button>
+                      </div>
+                      <div id="kanban-board" class="kanban-board">
+                          <div class="kanban-column" id="kanban-backlog" data-status="backlog">
+                              <h4>Backlog</h4>
+                              <div class="kanban-tasks"></div>
+                          </div>
+                          <div class="kanban-column" id="kanban-inprogress" data-status="inprogress">
+                              <h4>In Progress</h4>
+                              <div class="kanban-tasks"></div>
+                          </div>
+                          <div class="kanban-column" id="kanban-completed" data-status="completed">
+                              <h4>Completed</h4>
+                              <div class="kanban-tasks"></div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+          
+          <!-- NFT FRIEND TAB -->
+          <div id="dex-tab-nft" class="tab-content">
+              <div class="stack">
+                  <h3>NFT Friend</h3>
+                  <p class="small">Explore your NFT-roots with this interactive 3D carousel.</p>
+                  <hr class="sep">
+                  <div id="nft-carousel-container">
+                      <div class="carousel-scene">
+                          <div class="carousel">
+                              <!-- NFT cards will be injected here by JS -->
+                          </div>
+                      </div>
+                      <div class="carousel-controls">
+                          <button id="carousel-prev-btn">&lt; Prev</button>
+                          <button id="carousel-next-btn">Next &gt;</button>
+                      </div>
+                  </div>
+              </div>
+          </div>
 
           <!-- CRYPTO TAB -->
           <div id="dex-tab-crypto" class="tab-content">
@@ -134,7 +205,7 @@
                 <div class="stack">
                   <textarea id="aes-input" rows="4" placeholder="Enter plaintext or Base64 ciphertext..."></textarea>
                   <input type="password" id="aes-password" placeholder="Enter password...">
-                  <div class="row">
+                  <div class="row button-group-stretch">
                     <button id="aes-encrypt-btn">Encrypt</button>
                     <button id="aes-decrypt-btn">Decrypt</button>
                   </div>
@@ -180,7 +251,7 @@
                 <h4>Data Management</h4>
                 <div class="stack">
                     <button id="clear-data-btn" style="background: rgba(255,51,0,0.2); color:#ff3300; box-shadow:0 0 6px #ff3300;">Clear All Local Data</button>
-                    <p class="small">This will delete all saved recurring tasks. This action cannot be undone.</p>
+                    <p class="small">This will delete all saved recurring tasks and Kanban board data. This action cannot be undone.</p>
                 </div>
               </div>
             </div>

@@ -115,20 +115,52 @@ canvas.fullscreen-adapter {
 /* Smooth scrolling and transitions */
 * { scroll-behavior: smooth; transition: all 0.2s ease-in-out; }
 
+/* ================== PARALLAX BACKGROUND ================== */
+.parallax-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  transition: transform 0.1s linear;
+}
+.parallax-layer:nth-child(1) { z-index: -12; background: radial-gradient(circle at 50% 50%, rgba(0,204,255,0.02) 0%, transparent 70%); }
+.parallax-layer:nth-child(2) { z-index: -11; background: radial-gradient(circle at 20% 80%, rgba(0,255,0,0.01) 0%, transparent 60%); }
+.parallax-layer:nth-child(3) { z-index: -10; background: radial-gradient(circle at 80% 20%, rgba(255,255,51,0.01) 0%, transparent 65%); }
+.parallax-layer:nth-child(4) { z-index: -9; background: radial-gradient(circle at 40% 60%, rgba(0,204,255,0.02) 0%, transparent 75%); }
+.parallax-layer:nth-child(5) { z-index: -8; background: radial-gradient(circle at 60% 40%, rgba(0,255,0,0.01) 0%, transparent 55%); }
+.parallax-layer:nth-child(6) { z-index: -7; background: radial-gradient(circle at 90% 90%, rgba(255,255,51,0.01) 0%, transparent 50%); }
+.parallax-layer:nth-child(7) { z-index: -6; background: radial-gradient(circle at 10% 10%, rgba(0,204,255,0.02) 0%, transparent 80%); }
+.parallax-layer:nth-child(8) { z-index: -5; background: radial-gradient(circle at 50% 10%, rgba(0,255,0,0.01) 0%, transparent 70%); }
+.parallax-layer:nth-child(9) { z-index: -4; background: radial-gradient(circle at 10% 50%, rgba(255,255,51,0.01) 0%, transparent 60%); }
+.parallax-layer:nth-child(10) { z-index: -3; background: radial-gradient(circle at 70% 70%, rgba(0,204,255,0.02) 0%, transparent 85%); }
+.parallax-layer:nth-child(11) { z-index: -2; background: radial-gradient(circle at 30% 30%, rgba(0,255,0,0.01) 0%, transparent 50%); }
+.parallax-layer:nth-child(12) { z-index: -1; background: radial-gradient(circle at 80% 50%, rgba(255,255,51,0.01) 0%, transparent 70%); }
+
+
 /* ================== LAYOUT ================== */
 .wrapper { position:relative; width:100%; min-height:100vh; overflow:hidden; }
 .content {
   position:relative; z-index:2; padding:var(--padding-medium); max-width: 1800px; margin: 0 auto;
 }
 .grid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
   gap: var(--padding-medium);
 }
+.grid > .stack:first-child {
+    grid-column: span 12;
+}
+.grid > .stack:last-child {
+    grid-column: span 12;
+}
 @media (min-width: 1024px){
-  .grid {
-    display:grid;
-    grid-template-columns:1.4fr .6fr;
+  .grid > .stack:first-child {
+    grid-column: span 8;
+  }
+  .grid > .stack:last-child {
+    grid-column: span 4;
   }
 }
 @media (min-width: 1440px){
@@ -157,6 +189,29 @@ hr.sep { border:0; border-top:1px dashed #00ffcc55; margin:10px 0; }
 
 
 /* ================== COMPONENTS ================== */
+.prominent-buttons-container {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+.prominent-btn {
+    flex: 1 1 200px;
+    padding: 16px;
+    font-size: 1.2em;
+    font-weight: bold;
+    color: var(--color-neon-yellow);
+    background: rgba(255, 255, 51, 0.1);
+    border: 2px solid var(--color-neon-yellow);
+    box-shadow: 0 0 12px var(--color-neon-yellow);
+    text-shadow: var(--font-glow);
+}
+.prominent-btn:hover {
+    background: rgba(255, 255, 51, 0.2);
+    box-shadow: 0 0 20px var(--color-neon-yellow);
+}
+
+
 #tradingview-widget-container {
     height: 350px;
 }
@@ -215,6 +270,13 @@ pre { background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; border: 1px
 .button-secondary:hover {
   background: rgba(0, 204, 255, 0.3);
   box-shadow: 0 0 12px #00ccff;
+}
+
+/* Stretched button group utility */
+.button-group-stretch {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 10px;
 }
 
 #prompt-suggestions {
@@ -412,4 +474,143 @@ input[type=range]::-moz-range-thumb {
 }
 #seed-analysis-output .result-value.invalid {
     color: var(--color-neon-red);
+}
+
+/* ================== HRC203X KANBAN ================== */
+.kanban-board {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+@media (min-width: 768px) {
+    .kanban-board {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+.kanban-column {
+    background: rgba(0,0,0,0.2);
+    border-radius: 8px;
+    padding: 12px;
+    border: 1px dashed #00ffcc55;
+}
+.kanban-column h4 {
+    padding-bottom: 8px;
+    border-bottom: 1px solid #00ffcc55;
+    margin-bottom: 12px;
+}
+.kanban-tasks {
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.kanban-task {
+    padding: 12px;
+    background: rgba(0, 255, 204, 0.08);
+    border: 1px solid #00ffcc88;
+    border-radius: 6px;
+    cursor: grab;
+    transition: all 0.2s ease;
+}
+.kanban-task strong {
+    color: #fff;
+    display: block;
+    margin-bottom: 4px;
+}
+.kanban-task p {
+    font-size: .8em;
+    color: #00ffcc;
+    opacity: 0.8;
+}
+.kanban-task.dragging {
+    opacity: 0.5;
+    transform: scale(1.05);
+    box-shadow: 0 0 15px #00ffcc;
+}
+.kanban-column.drag-over {
+    background: rgba(0, 255, 204, 0.1);
+    border-style: solid;
+}
+.kanban-task .delete-task-btn {
+    float: right;
+    background: rgba(255,51,0,0.2);
+    color: #ff3300;
+    padding: 2px 6px;
+    font-size: .8em;
+    border-radius: 4px;
+    box-shadow: none;
+}
+
+
+/* ================== NFT FRIEND CAROUSEL ================== */
+#nft-carousel-container {
+    padding: 16px 0;
+}
+.carousel-scene {
+    width: 250px;
+    height: 350px;
+    position: relative;
+    perspective: 1000px;
+    margin: 20px auto;
+}
+.carousel {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    transform-style: preserve-3d;
+    transition: transform 1s;
+}
+.carousel-card {
+    position: absolute;
+    width: 240px;
+    height: 340px;
+    border-radius: 12px;
+    overflow: hidden;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transition: transform 0.8s, opacity 0.8s;
+    border: 2px solid #00ffcc;
+    box-shadow: 0 0 15px #00ffcc;
+}
+.carousel-card__face {
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    color: white;
+}
+.carousel-card__face--front {
+    background-size: cover;
+    background-position: center;
+}
+.carousel-card__face--back {
+    background: #0a1a2f;
+    transform: rotateY(180deg);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+}
+.carousel-card:hover {
+    transform: rotateY(180deg);
+}
+.carousel-card__face--back h5 {
+    color: var(--color-neon-yellow);
+    margin-bottom: 8px;
+}
+.carousel-card__face--back p {
+    font-size: .85em;
+    line-height: 1.4;
+    margin-bottom: 4px;
+}
+.carousel-card__face--back .mono {
+    font-size: .75em;
+    color: var(--color-neon-blue);
+}
+
+.carousel-controls {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 20px;
 }

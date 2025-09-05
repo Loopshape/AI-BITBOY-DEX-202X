@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import * as bip39 from 'bip39';
 import { Web3Modal } from '@web3modal/standalone';
@@ -52,6 +53,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Fix: Moved constant declaration before its first use to prevent runtime errors.
   const RECURRING_TASKS_KEY = 'bitboy_ai_dex_tasks';
+  const KANBAN_TASKS_KEY = 'nemodian_kanban_tasks';
+
   
   // ===============================================
   // TRADINGVIEW WIDGET
@@ -345,26 +348,40 @@ document.addEventListener('DOMContentLoaded', () => {
   // ===============================================
   // GENERIC TAB HANDLER
   // ===============================================
+  function activateTab(tabId) {
+    if (!tabId) return;
+    
+    const mainCard = document.getElementById('main-card');
+    if(mainCard) {
+        mainCard.querySelectorAll('.tab-button').forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-tab') === tabId);
+        });
+        mainCard.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.toggle('active', content.id === tabId);
+        });
+    }
+  }
+
   document.querySelectorAll('.tabs').forEach(tabGroup => {
-    // Fix: Cast e.target to HTMLElement and add null checks for safety.
     tabGroup.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
       if (target.classList.contains('tab-button')) {
-        const tabId = target.dataset.tab;
-        
-        tabGroup.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-        target.classList.add('active');
-
-        const contentContainer = target.closest('.card');
-        if (contentContainer) {
-            contentContainer.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-        }
-        if (tabId) {
-            document.getElementById(tabId)?.classList.add('active');
-        }
+        activateTab(target.dataset.tab);
       }
     });
   });
+  
+  document.querySelectorAll('.prominent-btn').forEach(button => {
+    button.addEventListener('click', (e) => {
+        const targetTab = (e.currentTarget as HTMLElement).dataset.tabTarget;
+        if (targetTab) {
+            activateTab(targetTab);
+            // Scroll to the main card for visibility
+            document.getElementById('main-card')?.scrollIntoView({ behavior: 'smooth' });
+        }
+    });
+  });
+
 
   // ===============================================
   // BITBOY AI-DEX LOGIC
@@ -935,13 +952,231 @@ Based on this data, provide a clear signal including:
   
   // Clear Data
   document.getElementById('clear-data-btn').addEventListener('click', () => {
-    if (confirm('Are you sure you want to clear all local data? This cannot be undone.')) {
+    if (confirm('Are you sure you want to clear all local data? This will affect recurring tasks and the Kanban board. This cannot be undone.')) {
         localStorage.removeItem(RECURRING_TASKS_KEY);
+        localStorage.removeItem(KANBAN_TASKS_KEY);
         recurringTasks = [];
         renderTasks();
+        renderKanbanBoard();
         logToConsole('All local data has been cleared.', 'warn');
     }
   });
+  
+  // ===============================================
+  // HRC203X KANBAN BOARD
+  // ===============================================
+    let kanbanTasks = {
+        backlog: [],
+        inprogress: [],
+        completed: []
+    };
+
+    function saveKanbanState() {
+        try {
+            localStorage.setItem(KANBAN_TASKS_KEY, JSON.stringify(kanbanTasks));
+        } catch (e) {
+            logToConsole('Could not save Kanban state to local storage.', 'error');
+        }
+    }
+
+    function renderKanbanBoard() {
+        Object.keys(kanbanTasks).forEach(status => {
+            const columnEl = document.querySelector(`#kanban-${status} .kanban-tasks`);
+            if (columnEl) {
+                columnEl.innerHTML = '';
+                kanbanTasks[status].forEach((task, index) => {
+                    const taskEl = document.createElement('div');
+                    taskEl.className = 'kanban-task';
+                    taskEl.draggable = true;
+                    taskEl.dataset.id = task.id;
+                    taskEl.dataset.status = status;
+                    taskEl.innerHTML = `
+                        <button class="delete-task-btn" data-id="${task.id}" data-status="${status}">X</button>
+                        <strong>${task.title}</strong>
+                        <p>${task.desc}</p>
+                    `;
+                    columnEl.appendChild(taskEl);
+                });
+            }
+        });
+        addKanbanEventListeners();
+    }
+
+    function addKanbanEventListeners() {
+        const tasks = document.querySelectorAll('.kanban-task');
+        const columns = document.querySelectorAll('.kanban-column');
+
+        tasks.forEach(task => {
+            task.addEventListener('dragstart', () => {
+                task.classList.add('dragging');
+            });
+
+            task.addEventListener('dragend', () => {
+                task.classList.remove('dragging');
+            });
+            
+            const deleteBtn = task.querySelector('.delete-task-btn');
+            deleteBtn?.addEventListener('click', (e) => {
+                const button = e.currentTarget as HTMLElement;
+                const taskId = button.dataset.id;
+                const taskStatus = button.dataset.status;
+                kanbanTasks[taskStatus] = kanbanTasks[taskStatus].filter(t => t.id != taskId);
+                saveKanbanState();
+                renderKanbanBoard();
+                logToConsole('Kanban task removed.', 'info');
+            });
+        });
+
+        columns.forEach(column => {
+            column.addEventListener('dragover', e => {
+                e.preventDefault();
+                column.classList.add('drag-over');
+            });
+            
+            column.addEventListener('dragleave', () => {
+                column.classList.remove('drag-over');
+            });
+
+            column.addEventListener('drop', e => {
+                e.preventDefault();
+                column.classList.remove('drag-over');
+                const draggingTask = document.querySelector('.kanban-task.dragging');
+                if (draggingTask) {
+                    const taskId = draggingTask.getAttribute('data-id');
+                    const oldStatus = draggingTask.getAttribute('data-status');
+                    const newStatus = column.getAttribute('data-status');
+
+                    if (oldStatus !== newStatus) {
+                        const taskToMove = kanbanTasks[oldStatus].find(t => t.id == taskId);
+                        kanbanTasks[oldStatus] = kanbanTasks[oldStatus].filter(t => t.id != taskId);
+                        kanbanTasks[newStatus].push(taskToMove);
+                        saveKanbanState();
+                        renderKanbanBoard();
+                        logToConsole(`Task moved to ${newStatus}.`, 'info');
+                    }
+                }
+            });
+        });
+    }
+
+    document.getElementById('add-task-btn')?.addEventListener('click', () => {
+        const titleInput = document.getElementById('new-task-title') as HTMLInputElement;
+        const descInput = document.getElementById('new-task-desc') as HTMLTextAreaElement;
+        const title = titleInput.value.trim();
+        const desc = descInput.value.trim();
+        
+        if (title) {
+            const newTask = {
+                id: Date.now().toString(),
+                title,
+                desc
+            };
+            kanbanTasks.backlog.push(newTask);
+            saveKanbanState();
+            renderKanbanBoard();
+            titleInput.value = '';
+            descInput.value = '';
+            logToConsole('New task added to Kanban backlog.', 'ok');
+        } else {
+            logToConsole('Task title cannot be empty.', 'warn');
+        }
+    });
+
+    function loadKanbanState() {
+        try {
+            const storedState = localStorage.getItem(KANBAN_TASKS_KEY);
+            if (storedState) {
+                const parsedState = JSON.parse(storedState);
+                // Basic validation
+                if (parsedState.backlog && parsedState.inprogress && parsedState.completed) {
+                    kanbanTasks = parsedState;
+                    logToConsole('Loaded Kanban board from local storage.', 'ok');
+                }
+            }
+        } catch (e) {
+            logToConsole('Could not load Kanban state.', 'error');
+        }
+        renderKanbanBoard();
+    }
+  
+  // ===============================================
+  // NFT FRIEND 3D CAROUSEL
+  // ===============================================
+    function initNftCarousel() {
+        // Fix: Cast carousel to HTMLElement to access the style property.
+        const carousel = document.querySelector('.carousel') as HTMLElement;
+        if (!carousel) return;
+
+        const placeholderNfts = [
+            { id: 1, name: 'CryptoPunk #7523', image: 'https://i.seadn.io/s/raw/files/0a256fe3c0429a30f79365b321a4f0b2.png?auto=format&dpr=1&w=1000', owner: '0x1a2b...c3d4', lastSale: '4.2 ETH' },
+            { id: 2, name: 'Bored Ape #8817', image: 'https://i.seadn.io/s/raw/files/1a889b6237c85172013854128ea3a152.png?auto=format&dpr=1&w=1000', owner: '0x5e6f...g7h8', lastSale: '88 ETH' },
+            { id: 3, name: 'Azuki #9605', image: 'https://i.seadn.io/s/raw/files/425514a6894a3297650b8935c7c254d0.png?auto=format&dpr=1&w=1000', owner: '0x9i0j...k1l2', lastSale: '12 ETH' },
+            { id: 4, name: 'Meebit #17522', image: 'https://i.seadn.io/s/raw/files/d5e3538418579d1349f7e522955f0580.png?auto=format&dpr=1&w=1000', owner: '0x3m4n...o5p6', lastSale: '1.5 ETH' },
+            { id: 5, name: 'Pudgy Penguin #6873', image: 'https://i.seadn.io/s/raw/files/7b63952b5e523f338d9d8b8e053a4365.png?auto=format&dpr=1&w=1000', owner: '0x7q8r...s9t0', lastSale: '3.9 ETH' },
+            { id: 6, name: 'Doodle #6914', image: 'https://i.seadn.io/s/raw/files/5fc8a26f8d55d1443d342023a1312521.png?auto=format&dpr=1&w=1000', owner: '0x1u2v...w3x4', lastSale: '7.1 ETH' },
+        ];
+
+        const cardCount = placeholderNfts.length;
+        const angle = 360 / cardCount;
+        const radius = 240 / (2 * Math.tan(Math.PI / cardCount));
+
+        placeholderNfts.forEach((nft, i) => {
+            const card = document.createElement('div');
+            card.className = 'carousel-card';
+            card.innerHTML = `
+                <div class="carousel-card__face carousel-card__face--front" style="background-image: url('${nft.image}');"></div>
+                <div class="carousel-card__face carousel-card__face--back">
+                    <h5>${nft.name}</h5>
+                    <p>Owner: <span class="mono">${nft.owner}</span></p>
+                    <p>Last Sale: <span class="mono">${nft.lastSale}</span></p>
+                </div>
+            `;
+            const cardAngle = angle * i;
+            card.style.transform = `rotateY(${cardAngle}deg) translateZ(${radius}px)`;
+            carousel.appendChild(card);
+        });
+        
+        let currentAngle = 0;
+        const prevBtn = document.getElementById('carousel-prev-btn');
+        const nextBtn = document.getElementById('carousel-next-btn');
+
+        prevBtn.addEventListener('click', () => {
+            currentAngle += angle;
+            carousel.style.transform = `rotateY(${currentAngle}deg)`;
+        });
+        nextBtn.addEventListener('click', () => {
+            currentAngle -= angle;
+            carousel.style.transform = `rotateY(${currentAngle}deg)`;
+        });
+
+        logToConsole('NFT Friend Carousel initialized.', 'ok');
+    }
+    
+  // ===============================================
+  // 3D PARALLAX EFFECT
+  // ===============================================
+  function initParallaxEffect() {
+      const layers = document.querySelectorAll('.parallax-layer');
+      if (layers.length === 0) return;
+
+      window.addEventListener('mousemove', (e) => {
+          const { clientX, clientY } = e;
+          const centerX = window.innerWidth / 2;
+          const centerY = window.innerHeight / 2;
+          const moveX = (clientX - centerX) / centerX; // Range: -1 to 1
+          const moveY = (clientY - centerY) / centerY; // Range: -1 to 1
+
+          layers.forEach((layer, index) => {
+              const htmlLayer = layer as HTMLElement;
+              // Increase multiplier for more pronounced depth
+              const depth = (index + 1) * 2.5; 
+              const x = moveX * depth;
+              const y = moveY * depth;
+              htmlLayer.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+          });
+      });
+      logToConsole('Initialized 3D parallax background effect.', 'info');
+  }
 
 
   // ===============================================
@@ -953,6 +1188,9 @@ Based on this data, provide a clear signal including:
     fetchCoinGeckoTrending();
     populateTokenSelects();
     loadTasks();
+    loadKanbanState();
+    initNftCarousel();
+    initParallaxEffect();
     logToConsole('Initialization complete. Welcome!', 'ok');
   }
 
