@@ -470,8 +470,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // ===============================================
   // BITBOY AI-DEX LOGIC
   // ===============================================
-  const connectWalletBtn = document.getElementById('connect-wallet-btn') as HTMLButtonElement;
-  const disconnectWalletBtn = document.getElementById('disconnect-wallet-btn') as HTMLButtonElement;
+  const headerConnectBtn = document.getElementById('header-connect-btn') as HTMLButtonElement;
+  const headerDisconnectBtn = document.getElementById('header-disconnect-btn') as HTMLButtonElement;
+  const walletStatusIndicator = document.getElementById('wallet-status-indicator') as HTMLElement;
+  const headerWalletInfo = document.getElementById('header-wallet-info') as HTMLElement;
+  const headerWalletAddress = document.getElementById('header-wallet-address') as HTMLElement;
+  const headerWalletNetwork = document.getElementById('header-wallet-network') as HTMLElement;
+  const headerWalletBalance = document.getElementById('header-wallet-balance') as HTMLElement;
   const swapBtn = document.getElementById('swap-btn') as HTMLButtonElement;
   const aiSignalBtn = document.getElementById('ai-signal-btn') as HTMLButtonElement;
   const buyLongBtn = document.getElementById('buy-long-btn') as HTMLButtonElement;
@@ -483,6 +488,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let userAccount = null;
   let provider = null; // To hold the active wallet provider (MetaMask or WC)
+  let walletUpdateInterval: number | null = null;
+
 
   // WalletConnect Modal
     const web3Modal = new Web3Modal({
@@ -501,7 +508,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function closeConnectModal() {
       connectModal.style.display = 'none';
   }
-  connectWalletBtn.addEventListener('click', openConnectModal);
+  headerConnectBtn.addEventListener('click', openConnectModal);
   closeModalBtn.addEventListener('click', closeConnectModal);
   connectModal.addEventListener('click', (e) => {
       if (e.target === connectModal) {
@@ -512,37 +519,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function getNetworkName(chainId) {
     switch (chainId) {
-      case '0x1': return 'Ethereum Mainnet';
+      case '0x1': return 'Ethereum';
       case '0xaa36a7': return 'Sepolia';
-      case '0x89': return 'Polygon Mainnet';
+      case '0x89': return 'Polygon';
       default: return `Unknown (${chainId})`;
     }
   }
 
-  async function updateWalletInfo(connectedProvider) {
-    if (!userAccount) return;
+  async function updateWalletDisplay(connectedProvider) {
+    if (!userAccount || !connectedProvider) return;
     try {
-        const weiBalance = await connectedProvider.request({ method: 'eth_getBalance', params: [userAccount, 'latest'] });
-        const ethBalance = (parseInt(weiBalance, 16) / 1e18).toFixed(4);
-        const chainId = await connectedProvider.request({ method: 'eth_chainId' });
-        const networkName = getNetworkName(chainId);
-        
-        document.getElementById('wallet-address').textContent = `${userAccount.slice(0, 6)}...${userAccount.slice(-4)}`;
-        document.getElementById('wallet-balance').textContent = ethBalance;
-        document.getElementById('wallet-network').textContent = networkName;
-        document.getElementById('wallet-info').style.display = 'block';
+        const [chainId, balanceWei] = await Promise.all([
+            connectedProvider.request({ method: 'eth_chainId' }),
+            connectedProvider.request({ method: 'eth_getBalance', params: [userAccount, 'latest'] })
+        ]);
 
-        connectWalletBtn.style.display = 'none';
-        disconnectWalletBtn.style.display = 'inline-block';
-        swapBtn.disabled = false;
-        aiSignalBtn.disabled = false;
-        buyLongBtn.disabled = false;
-        sellShortBtn.disabled = false;
-        logToConsole(`Wallet connected: ${userAccount}`, 'ok');
+        const networkName = getNetworkName(chainId);
+        const balanceEth = (parseInt(balanceWei, 16) / 1e18).toFixed(4);
+        
+        headerWalletAddress.textContent = `${userAccount.slice(0, 6)}...${userAccount.slice(-4)}`;
+        headerWalletNetwork.textContent = networkName;
+        headerWalletBalance.textContent = `${balanceEth} ETH`;
+        
+        headerWalletInfo.style.display = 'flex';
+        walletStatusIndicator.className = 'status-dot connected';
 
     } catch (error) {
-        logToConsole(`Could not fetch wallet info: ${error.message}`, 'error');
-        disconnect();
+        logToConsole(`Could not refresh wallet state: ${error.message}`, 'error');
+        // Don't disconnect on a failed refresh, as the connection may still be valid.
+        // The 'disconnect' event listener will handle actual disconnections.
     }
   }
 
@@ -554,34 +559,47 @@ document.addEventListener('DOMContentLoaded', () => {
           if (accounts.length > 0) {
               userAccount = accounts[0];
               logToConsole(`Account switched to: ${userAccount}`, 'info');
-              updateWalletInfo(provider);
+              updateWalletDisplay(provider);
           } else {
               disconnect();
           }
       });
       provider.on('chainChanged', () => {
-          logToConsole('Network changed. Reloading wallet info.', 'info');
-          updateWalletInfo(provider);
+          logToConsole('Network changed. Refreshing wallet state.', 'info');
+          updateWalletDisplay(provider);
       });
       provider.on('disconnect', () => {
           disconnect();
       });
 
-      const accounts = await provider.request({ method: 'eth_accounts' });
-      if (accounts && accounts.length > 0) {
-          userAccount = accounts[0];
-          await updateWalletInfo(provider);
-          closeConnectModal();
-      } else {
-        // For MetaMask, we might need to request accounts again if they weren't returned
-         const requestedAccounts = await provider.request({ method: 'eth_requestAccounts' });
-         if(requestedAccounts && requestedAccounts.length > 0) {
-             userAccount = requestedAccounts[0];
-             await updateWalletInfo(provider);
-             closeConnectModal();
-         } else {
-            logToConsole('No accounts found. Please ensure your wallet is unlocked and has granted permissions.', 'warn');
-         }
+      try {
+        const accounts = await provider.request({ method: 'eth_requestAccounts' });
+        if(accounts && accounts.length > 0) {
+            userAccount = accounts[0];
+
+            // --- One-time setup on successful connection ---
+            headerConnectBtn.style.display = 'none';
+            headerDisconnectBtn.style.display = 'inline-block';
+            swapBtn.disabled = false;
+            aiSignalBtn.disabled = false;
+            buyLongBtn.disabled = false;
+            sellShortBtn.disabled = false;
+            logToConsole(`Wallet connected: ${userAccount}`, 'ok');
+            
+            // Perform initial display update
+            await updateWalletDisplay(provider);
+            
+            // Clear any previous interval and start the new 30-second poller
+            if (walletUpdateInterval) clearInterval(walletUpdateInterval);
+            walletUpdateInterval = window.setInterval(() => updateWalletDisplay(provider), 30000);
+            
+            closeConnectModal();
+        } else {
+           logToConsole('No accounts found. Please ensure your wallet is unlocked and has granted permissions.', 'warn');
+        }
+      } catch (error) {
+          logToConsole(`Wallet connection process failed: ${error.message}`, 'error');
+          disconnect(); // Clean up if the connection process itself fails
       }
   }
 
@@ -612,14 +630,22 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   
   function disconnect() {
+    if (walletUpdateInterval) {
+        clearInterval(walletUpdateInterval);
+        walletUpdateInterval = null;
+    }
+    
     userAccount = null;
     if(provider && typeof provider.disconnect === 'function') {
       provider.disconnect();
     }
     provider = null;
-    document.getElementById('wallet-info').style.display = 'none';
-    connectWalletBtn.style.display = 'inline-block';
-    disconnectWalletBtn.style.display = 'none';
+
+    headerWalletInfo.style.display = 'none';
+    walletStatusIndicator.className = 'status-dot disconnected';
+    headerConnectBtn.style.display = 'inline-block';
+    headerDisconnectBtn.style.display = 'none';
+
     swapBtn.disabled = true;
     aiSignalBtn.disabled = true;
     buyLongBtn.disabled = true;
@@ -627,7 +653,7 @@ document.addEventListener('DOMContentLoaded', () => {
     logToConsole('Wallet disconnected.', 'info');
   }
 
-  disconnectWalletBtn.addEventListener('click', disconnect);
+  headerDisconnectBtn.addEventListener('click', disconnect);
 
   aiSignalBtn.addEventListener('click', async () => {
     const fromTokenSelect = document.getElementById('from-token') as HTMLSelectElement;
@@ -730,6 +756,8 @@ Based on this data, provide a clear signal including:
 4. Target Price: (A potential take-profit level)
 5. Stop-Loss: (A price to exit if the trade goes against you)
 6. Confidence: (e.g., High, Medium, Low)
+
+After the signal, add a section titled "Risks & Considerations" with a brief, bulleted list of potential risks for this specific trade, derived from the provided market data.
     `;
 
     await queryAiCore(prompt);

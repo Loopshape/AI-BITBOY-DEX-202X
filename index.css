@@ -69,7 +69,7 @@ body {
 h1,h2,h3,h4,h5,h6 { color: var(--color-neon-yellow); text-shadow: var(--font-glow); }
 
 /* Responsive typography */
-h1 { font-size: clamp(2rem, 5vw, 3rem); }
+h1 { font-size: clamp(1.5rem, 4vw, 2.5rem); }
 h2 { font-size: clamp(1.5rem, 4vw, 2.25rem); }
 h3 { font-size: clamp(1.2rem, 3vw, 1.75rem); }
 h4 { font-size: clamp(1rem, 2.5vw, 1.25rem); }
@@ -144,6 +144,14 @@ canvas.fullscreen-adapter {
 .content {
   position:relative; z-index:2; padding:var(--padding-medium); max-width: 1800px; margin: 0 auto;
 }
+.main-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
 .grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
@@ -176,7 +184,7 @@ canvas.fullscreen-adapter {
 .card h4 { margin-bottom:6px; color: var(--color-neon-blue); }
 .small { font-size:.85em; opacity:.85; }
 .mono { font-family: 'SF Mono','Monaco','Inconsolata','Roboto Mono', monospace; }
-.tag { border:1px solid #00ccff; padding:2px 8px; border-radius:999px; font-size:.8em; color:#00ccff; }
+.tag { border:1px solid #00ccff; padding:2px 8px; border-radius:999px; font-size:.8em; color:#00ccff; background: rgba(0,204,255,0.1); }
 hr.sep { border:0; border-top:1px dashed #00ffcc55; margin:10px 0; }
 
 /* ================== TABS ================== */
@@ -209,6 +217,39 @@ hr.sep { border:0; border-top:1px dashed #00ffcc55; margin:10px 0; }
 .prominent-btn:hover {
     background: rgba(255, 255, 51, 0.2);
     box-shadow: 0 0 20px var(--color-neon-yellow);
+}
+
+.header-wallet-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    transition: all 0.3s;
+}
+.status-dot.disconnected {
+    background-color: var(--color-neon-red);
+    box-shadow: 0 0 8px var(--color-neon-red);
+}
+.status-dot.connected {
+    background-color: var(--color-neon-green);
+    box-shadow: 0 0 8px var(--color-neon-green);
+}
+#header-wallet-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(0,0,0,0.3);
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid #00ffcc33;
+}
+#header-wallet-balance {
+    color: var(--color-neon-green);
+    font-weight: bold;
 }
 
 

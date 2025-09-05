@@ -25,8 +25,22 @@
   <div class="parallax-layer"></div>
 
   <div class="content">
-    <h1>NEMODIAN COREMOVEMENT 202X</h1>
-    <p class="small" style="margin-top:4px; margin-bottom:20px;">AI STRATEGY-NFT:AGENT Integration</p>
+    <header class="main-header">
+        <div class="stack" style="gap: 4px;">
+            <h1>NEMODIAN COREMOVEMENT 202X</h1>
+            <p class="small">AI STRATEGY-NFT:AGENT // Author: Aris Arjuna Noorsanto <exe.opcode@gmail.com></p>
+        </div>
+        <div id="header-wallet-controls" class="header-wallet-controls">
+            <div id="header-wallet-info" style="display: none;">
+                <span id="header-wallet-balance" class="mono"></span>
+                <span id="header-wallet-network" class="tag"></span>
+                <span id="header-wallet-address" class="mono"></span>
+            </div>
+            <div id="wallet-status-indicator" class="status-dot disconnected"></div>
+            <button id="header-connect-btn">Connect Wallet</button>
+            <button id="header-disconnect-btn" style="display: none; background: rgba(255,51,0,0.2); color:#ff3300; box-shadow:0 0 6px #ff3300;">Disconnect</button>
+        </div>
+    </header>
     
     <div class="prominent-buttons-container">
         <button class="prominent-btn" data-tab-target="dex-tab-hrc">HRC203X</button>
@@ -61,14 +75,8 @@
             <div class="stack">
               <div class="row dex-header">
                 <h3>Decentralized Exchange</h3>
-                <div class="row">
-                  <button id="connect-wallet-btn">Connect Wallet</button>
-                  <button id="disconnect-wallet-btn" style="display: none;">Disconnect</button>
-                </div>
               </div>
-              <p class="small" id="wallet-info" style="display:none;">
-                Wallet: <span id="wallet-address" class="mono"></span> | Balance: <span id="wallet-balance" class="mono"></span> ETH | Network: <span id="wallet-network" class="mono"></span>
-              </p>
+              <p class="small">Connect your wallet using the button in the header to begin trading.</p>
               <hr class="sep">
               <div class="stack" style="gap:16px;">
                   <div class="row">
