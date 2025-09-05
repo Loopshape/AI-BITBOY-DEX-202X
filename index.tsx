@@ -3,6 +3,9 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 // Fix: Declare VANTA to make it available in TypeScript
 declare var VANTA: any;
+// Declare TradingView for the widget
+declare var TradingView: any;
+
 
 // Fix: Extend Window interface for MetaMask/Web3 wallet compatibility
 declare global {
@@ -47,6 +50,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Fix: Moved constant declaration before its first use to prevent runtime errors.
   const RECURRING_TASKS_KEY = 'bitboy_ai_dex_tasks';
+  
+  // ===============================================
+  // TRADINGVIEW WIDGET
+  // ===============================================
+  function updateTradingViewWidget(symbol = 'COINBASE:BTCUSD') {
+    const container = document.getElementById('tradingview-widget-container');
+    if (!container || typeof TradingView === 'undefined') return;
+
+    // Clear previous widget
+    container.innerHTML = '';
+
+    try {
+        new TradingView.widget({
+            "autosize": true,
+            "symbol": symbol,
+            "interval": "240", // 4 hours
+            "timezone": "Etc/UTC",
+            "theme": "dark",
+            "style": "1",
+            "locale": "en",
+            "enable_publishing": false,
+            "allow_symbol_change": true,
+            "container_id": "tradingview-widget-container"
+        });
+        logToConsole(`TradingView chart loaded for ${symbol}.`, 'info');
+    } catch (error) {
+        logToConsole(`Failed to load TradingView widget: ${error.message}`, 'error');
+        container.innerHTML = '<p class="small log-error">Could not load chart.</p>';
+    }
+  }
+
 
   // ===============================================
   // COINGECKO API INTEGRATION
@@ -65,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
       data.coins.slice(0, 7).forEach(coin => {
         const pairEl = document.createElement('div');
         pairEl.className = 'dex-pair';
+        pairEl.style.cursor = 'pointer'; // Make it look clickable
         pairEl.innerHTML = `
           <div class="row">
             <div class="dex-pair-logos">
@@ -74,6 +109,10 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <span class="mono">Rank: ${coin.item.market_cap_rank}</span>
         `;
+        // Add event listener to pre-fill AI prompt on click
+        pairEl.addEventListener('click', () => {
+            setAiPromptForToken(coin.item.name, coin.item.symbol);
+        });
         hotPairsList.appendChild(pairEl);
       });
       logToConsole('Loaded trending pairs from CoinGecko.', 'ok');
@@ -129,6 +168,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const aiSubmitBtn = document.getElementById('ollama-submit') as HTMLButtonElement;
   const suggestPromptsBtn = document.getElementById('suggest-prompts-btn') as HTMLButtonElement;
   const promptSuggestionsContainer = document.getElementById('prompt-suggestions') as HTMLElement;
+
+  // Function to pre-fill the AI prompt based on a selected token
+  function setAiPromptForToken(tokenName, tokenSymbol) {
+    const prompt = `Provide a detailed market analysis for ${tokenName} (${tokenSymbol.toUpperCase()}). What are the recent trends, potential price targets, and overall market sentiment?`;
+    aiPromptInput.value = prompt;
+    logToConsole(`AI prompt pre-filled for ${tokenName}.`, 'info');
+    
+    // Scroll to the AI core and focus the input for better UX
+    const aiCoreCard = aiPromptInput.closest('.card');
+    if (aiCoreCard) {
+        aiCoreCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    aiPromptInput.focus();
+
+    // Update the TradingView widget, ignoring the custom token
+    if (tokenSymbol.toUpperCase() !== 'BITBOY') {
+      updateTradingViewWidget(`COINBASE:${tokenSymbol.toUpperCase()}USD`);
+    }
+  }
 
   async function queryAiCore(prompt) {
     logToConsole(`Querying Gemini AI Core...`, 'info');
@@ -354,6 +412,27 @@ document.addEventListener('DOMContentLoaded', () => {
   const fromTokenSelect = document.getElementById('from-token') as HTMLSelectElement;
   const toTokenSelect = document.getElementById('to-token') as HTMLSelectElement;
 
+  // Add listeners to DEX token selectors to pre-fill AI prompt
+  [fromTokenSelect, toTokenSelect].forEach(select => {
+    select.addEventListener('change', (e) => {
+        const target = e.currentTarget as HTMLSelectElement;
+        const selectedOption = target.options[target.selectedIndex];
+        if (!selectedOption) return;
+
+        const optionText = selectedOption.text;
+        // Parse "Bitcoin (BTC)" into name and symbol
+        const match = optionText.match(/(.*) \((.*)\)/);
+        if (match && match.length === 3) {
+            const tokenName = match[1];
+            const tokenSymbol = match[2];
+            setAiPromptForToken(tokenName, tokenSymbol);
+        } else if (optionText === 'BITBOY (BITBOY)') {
+            // Handle custom token
+            setAiPromptForToken('BITBOY', 'BITBOY');
+        }
+    });
+  });
+
   // Fixed rates for the custom token for simulation
   const bitboyRates = { 'ethereum': 5000, 'usd-coin': 3.33 }; 
 
@@ -393,7 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   [fromAmountInput, fromTokenSelect, toTokenSelect].forEach(el => {
     el.addEventListener('input', updateSwapAmounts);
-    el.addEventListener('change', updateSwapAmounts);
+    // Note: The 'change' event listener for AI prompts is separate and doesn't interfere
   });
 
   swapBtn.addEventListener('click', () => {
@@ -679,5 +758,6 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchCoinGeckoTrending();
   populateTokenSelects();
   loadRecurringTasks();
+  updateTradingViewWidget(); // Load default chart
 
 });
