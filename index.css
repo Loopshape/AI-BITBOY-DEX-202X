@@ -181,7 +181,13 @@ canvas.fullscreen-adapter {
 .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
 .stack { display:flex; flex-direction:column; gap:10px; }
 .card { padding:var(--padding-medium); border-radius:14px; border:2px solid #00ffcc55; background:rgba(10,20,20,0.35); box-shadow:0 0 12px rgba(0,255,204,.05) inset; transition: min-height 0.3s ease-out; }
-.card h3 { margin-bottom:8px; }
+.card h3 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom:8px;
+}
 .card h4 { margin-bottom:6px; color: var(--color-neon-blue); }
 .small { font-size:.85em; opacity:.85; }
 .mono { font-family: 'SF Mono','Monaco','Inconsolata','Roboto Mono', monospace; }
@@ -302,6 +308,24 @@ hr.sep { border:0; border-top:1px dashed #00ffcc55; margin:10px 0; }
 #header-wallet-balance {
     color: var(--color-neon-green);
     font-weight: bold;
+}
+
+#show-qr-btn {
+    background-color: rgba(0, 204, 255, 0.1);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2300ccff'%3E%3Cpath d='M3 3h8v8H3V3zm2 2v4h4V5H5zM3 13h8v8H3v-8zm2 2v4h4v-4H5zM13 3h8v8h-8V3zm2 2v4h4V5h-4zM16 16h2v2h-2v-2zm-3-3h2v2h-2v-2zm3 3h2v2h-2v-2zm-3 3h2v2h-2v-2zm-3-3h2v2h-2v-2zm6-3h2v2h-2v-2zm-3 0h2v2h-2v-2zm3-3h2v2h-2v-2zm-3 0h2v2h-2v-2z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 16px 16px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid #00ccff55;
+    padding: 0;
+    box-shadow: none;
+}
+#show-qr-btn:hover {
+    background-color: rgba(0, 204, 255, 0.3);
+    border-color: #00ccff;
 }
 
 
@@ -515,6 +539,12 @@ input[type=range]::-moz-range-thumb {
     text-align: center;
     padding: 12px;
     margin-top: 8px;
+}
+
+#qr-code-canvas {
+    border-radius: 8px;
+    border: 2px solid var(--color-neon-blue);
+    background: white; /* QR codes need a light background to be scannable */
 }
 
 

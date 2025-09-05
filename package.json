@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "bip39": "latest",
-    "@web3modal/standalone": "latest"
+    "@web3modal/standalone": "latest",
+    "qrcode": "latest"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
