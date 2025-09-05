@@ -157,6 +157,38 @@ hr.sep { border:0; border-top:1px dashed #00ffcc55; margin:10px 0; }
 
 pre { background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; border: 1px solid #00ffcc33; white-space: pre-wrap; word-break: break-all; }
 
+.button-secondary {
+  background: rgba(0, 204, 255, 0.1);
+  color: #00ccff;
+  box-shadow: 0 0 6px #00ccff;
+}
+.button-secondary:hover {
+  background: rgba(0, 204, 255, 0.3);
+  box-shadow: 0 0 12px #00ccff;
+}
+
+#prompt-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.prompt-suggestion {
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid #00ccff33;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 13px;
+}
+
+.prompt-suggestion:hover {
+  background: rgba(0, 204, 255, 0.2);
+  border-color: #00ccff;
+}
+
 </style>
 </head>
 
@@ -295,6 +327,8 @@ pre { background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; border: 1px
             <p class="small">Enter a prompt to get analysis from the Gemini model.</p>
             <textarea id="ollama-prompt" rows="4" placeholder="e.g., What is the market sentiment for Bitcoin?"></textarea>
             <button id="ollama-submit">Query AI Core</button>
+            <button id="suggest-prompts-btn" class="button-secondary">Suggest Prompts</button>
+            <div id="prompt-suggestions"></div>
           </div>
         </div>
         <div class="card">

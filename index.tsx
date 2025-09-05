@@ -1,6 +1,16 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
+// Fix: Declare VANTA to make it available in TypeScript
+declare var VANTA: any;
+
+// Fix: Extend Window interface for MetaMask/Web3 wallet compatibility
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
+
 // ===============================================
 // VANTA.JS BACKGROUND
 // ===============================================
@@ -23,7 +33,8 @@ VANTA.NET({
 // ===============================================
 // GLOBAL CONSOLE LOGGER
 // ===============================================
-const consoleElement = document.getElementById('console');
+// Fix: Cast consoleElement to HTMLElement
+const consoleElement = document.getElementById('console') as HTMLElement;
 function logToConsole(message, type = 'info') {
   const timestamp = new Date().toLocaleTimeString();
   const logEntry = document.createElement('div');
@@ -34,13 +45,17 @@ function logToConsole(message, type = 'info') {
 
 document.addEventListener('DOMContentLoaded', () => {
 
+  // Fix: Moved constant declaration before its first use to prevent runtime errors.
+  const RECURRING_TASKS_KEY = 'bitboy_ai_dex_tasks';
+
   // ===============================================
   // COINGECKO API INTEGRATION
   // ===============================================
   const COINGECKO_API_BASE = 'https://api.coingecko.com/api/v3';
 
   async function fetchCoinGeckoTrending() {
-    const hotPairsList = document.getElementById('hot-pairs-list');
+    // Fix: Cast hotPairsList to HTMLElement
+    const hotPairsList = document.getElementById('hot-pairs-list') as HTMLElement;
     try {
       const response = await fetch(`${COINGECKO_API_BASE}/search/trending`);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -69,8 +84,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function populateTokenSelects() {
-    const fromTokenSelect = document.getElementById('from-token');
-    const toTokenSelect = document.getElementById('to-token');
+    // Fix: Cast select elements to HTMLSelectElement to access properties like 'add' and 'value'.
+    const fromTokenSelect = document.getElementById('from-token') as HTMLSelectElement;
+    const toTokenSelect = document.getElementById('to-token') as HTMLSelectElement;
     
     try {
       const response = await fetch(`${COINGECKO_API_BASE}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1`);
@@ -82,12 +98,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Add custom BITBOY token
       const bitboyOption = new Option('BITBOY (BITBOY)', 'BITBOY');
-      fromTokenSelect.add(bitboyOption.cloneNode(true));
+      fromTokenSelect.add(bitboyOption.cloneNode(true) as HTMLOptionElement);
       toTokenSelect.add(bitboyOption);
 
       data.forEach(coin => {
         const option = new Option(`${coin.name} (${coin.symbol.toUpperCase()})`, coin.id);
-        fromTokenSelect.add(option.cloneNode(true));
+        fromTokenSelect.add(option.cloneNode(true) as HTMLOptionElement);
         toTokenSelect.add(option);
       });
 
@@ -108,8 +124,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // GEMINI AI CORE
   // ===============================================
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const aiPromptInput = document.getElementById('ollama-prompt');
-  const aiSubmitBtn = document.getElementById('ollama-submit');
+  // Fix: Cast elements to their specific types to access properties like 'value' and 'disabled'.
+  const aiPromptInput = document.getElementById('ollama-prompt') as HTMLInputElement;
+  const aiSubmitBtn = document.getElementById('ollama-submit') as HTMLButtonElement;
+  const suggestPromptsBtn = document.getElementById('suggest-prompts-btn') as HTMLButtonElement;
+  const promptSuggestionsContainer = document.getElementById('prompt-suggestions') as HTMLElement;
 
   async function queryAiCore(prompt) {
     logToConsole(`Querying Gemini AI Core...`, 'info');
@@ -149,22 +168,87 @@ document.addEventListener('DOMContentLoaded', () => {
       logToConsole('Prompt cannot be empty.', 'warn');
     }
   });
+  
+  async function getPromptSuggestions() {
+    logToConsole('Generating prompt suggestions...', 'info');
+    suggestPromptsBtn.disabled = true;
+    suggestPromptsBtn.textContent = 'Generating...';
+    promptSuggestionsContainer.innerHTML = '';
+
+    try {
+      const prompt = `
+        You are an expert crypto market analyst integrated into a DEX application. 
+        Generate exactly 3 concise, insightful questions a user might ask about the current cryptocurrency market.
+        These questions will be used as suggested prompts for an AI.
+        The prompts should be distinct and cover different aspects like market sentiment, specific asset analysis, and future trends.
+        Return the questions as a JSON array of strings.
+      `;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.STRING,
+              description: "An insightful question about the crypto market."
+            }
+          }
+        }
+      });
+
+      const suggestions = JSON.parse(response.text);
+
+      if (Array.isArray(suggestions) && suggestions.length > 0) {
+        logToConsole('Generated prompt suggestions.', 'ok');
+        suggestions.forEach(suggestionText => {
+          const suggestionEl = document.createElement('div');
+          suggestionEl.className = 'prompt-suggestion mono';
+          suggestionEl.textContent = suggestionText;
+          suggestionEl.addEventListener('click', () => {
+            aiPromptInput.value = suggestionText;
+            logToConsole(`Prompt set to: "${suggestionText}"`, 'info');
+            aiPromptInput.focus();
+          });
+          promptSuggestionsContainer.appendChild(suggestionEl);
+        });
+      } else {
+          throw new Error('Received invalid suggestions format from AI.');
+      }
+
+    } catch (error) {
+      logToConsole(`Failed to get prompt suggestions: ${error.message}`, 'error');
+    } finally {
+      suggestPromptsBtn.disabled = false;
+      suggestPromptsBtn.textContent = 'Suggest Prompts';
+    }
+  }
+
+  suggestPromptsBtn.addEventListener('click', getPromptSuggestions);
 
 
   // ===============================================
   // GENERIC TAB HANDLER
   // ===============================================
   document.querySelectorAll('.tabs').forEach(tabGroup => {
+    // Fix: Cast e.target to HTMLElement and add null checks for safety.
     tabGroup.addEventListener('click', (e) => {
-      if (e.target.classList.contains('tab-button')) {
-        const tabId = e.target.dataset.tab;
+      const target = e.target as HTMLElement;
+      if (target.classList.contains('tab-button')) {
+        const tabId = target.dataset.tab;
         
         tabGroup.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-        e.target.classList.add('active');
+        target.classList.add('active');
 
-        const contentContainer = e.target.closest('.card');
-        contentContainer.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-        document.getElementById(tabId).classList.add('active');
+        const contentContainer = target.closest('.card');
+        if (contentContainer) {
+            contentContainer.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        }
+        if (tabId) {
+            document.getElementById(tabId)?.classList.add('active');
+        }
       }
     });
   });
@@ -172,10 +256,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // ===============================================
   // BITBOY AI-DEX LOGIC
   // ===============================================
-  const connectWalletBtn = document.getElementById('connect-wallet-btn');
-  const disconnectWalletBtn = document.getElementById('disconnect-wallet-btn');
-  const swapBtn = document.getElementById('swap-btn');
-  const aiSignalBtn = document.getElementById('ai-signal-btn');
+  // Fix: Cast button elements to HTMLButtonElement to access properties like 'disabled'.
+  const connectWalletBtn = document.getElementById('connect-wallet-btn') as HTMLButtonElement;
+  const disconnectWalletBtn = document.getElementById('disconnect-wallet-btn') as HTMLButtonElement;
+  const swapBtn = document.getElementById('swap-btn') as HTMLButtonElement;
+  const aiSignalBtn = document.getElementById('ai-signal-btn') as HTMLButtonElement;
   let userAccount = null;
 
   function getNetworkName(chainId) {
@@ -263,10 +348,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 
-  const fromAmountInput = document.getElementById('from-amount');
-  const toAmountInput = document.getElementById('to-amount');
-  const fromTokenSelect = document.getElementById('from-token');
-  const toTokenSelect = document.getElementById('to-token');
+  // Fix: Cast input and select elements to their specific types.
+  const fromAmountInput = document.getElementById('from-amount') as HTMLInputElement;
+  const toAmountInput = document.getElementById('to-amount') as HTMLInputElement;
+  const fromTokenSelect = document.getElementById('from-token') as HTMLSelectElement;
+  const toTokenSelect = document.getElementById('to-token') as HTMLSelectElement;
 
   // Fixed rates for the custom token for simulation
   const bitboyRates = { 'ethereum': 5000, 'usd-coin': 3.33 }; 
@@ -348,19 +434,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 1500);
   });
   
-  aiSignalBtn.addEventListener('click', () => {
+  aiSignalBtn.addEventListener('click', async () => {
       const fromToken = fromTokenSelect.options[fromTokenSelect.selectedIndex].text;
       const toToken = toTokenSelect.options[toTokenSelect.selectedIndex].text;
-      const prompt = `Provide a brief, speculative trade signal analysis for swapping ${fromToken} for ${toToken} right now. Consider current market conditions. Be concise.`;
+      const fromId = fromTokenSelect.value;
+      const toId = toTokenSelect.value;
+
+      logToConsole(`Requesting AI trade signal for ${fromToken} -> ${toToken}...`, 'info');
+
+      const rate = await getDynamicRate(fromId, toId);
+      
+      let prompt;
+
+      if (rate && rate > 0) {
+        logToConsole(`Current rate: 1 ${fromToken.split(' ')[0]} ≈ ${rate.toFixed(6)} ${toToken.split(' ')[0]}`, 'info');
+        prompt = `Provide a brief, speculative trade signal analysis for swapping ${fromToken} for ${toToken} right now. The current approximate market price ratio is 1 ${fromToken.split(' ')[0]} = ${rate.toFixed(6)} ${toToken.split(' ')[0]}. Based on this rate and overall market sentiment, is this a favorable trade? Be concise.`;
+      } else {
+        logToConsole('Could not fetch market rate. AI will provide a general analysis.', 'warn');
+        prompt = `Provide a brief, speculative trade signal analysis for swapping ${fromToken} for ${toToken} right now. The specific market rate could not be fetched. Consider general market conditions. Be concise.`;
+      }
+      
       queryAiCore(prompt);
   });
 
   // ===============================================
   // CRYPTOGRAPHIC OPERATIONS
   // ===============================================
-  const hashInput = document.getElementById('hash-input');
-  const hashBtn = document.getElementById('hash-btn');
-  const hashOutput = document.getElementById('hash-output');
+  // Fix: Cast elements to their specific types.
+  const hashInput = document.getElementById('hash-input') as HTMLInputElement;
+  const hashBtn = document.getElementById('hash-btn') as HTMLButtonElement;
+  const hashOutput = document.getElementById('hash-output') as HTMLElement;
 
   hashBtn.addEventListener('click', async () => {
     const text = hashInput.value;
@@ -382,11 +485,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  const aesInput = document.getElementById('aes-input');
-  const aesPassword = document.getElementById('aes-password');
-  const aesEncryptBtn = document.getElementById('aes-encrypt-btn');
-  const aesDecryptBtn = document.getElementById('aes-decrypt-btn');
-  const aesOutput = document.getElementById('aes-output');
+  // Fix: Cast elements to their specific types.
+  const aesInput = document.getElementById('aes-input') as HTMLInputElement;
+  const aesPassword = document.getElementById('aes-password') as HTMLInputElement;
+  const aesEncryptBtn = document.getElementById('aes-encrypt-btn') as HTMLButtonElement;
+  const aesDecryptBtn = document.getElementById('aes-decrypt-btn') as HTMLButtonElement;
+  const aesOutput = document.getElementById('aes-output') as HTMLElement;
 
   async function getAesKey(password, salt) {
       const enc = new TextEncoder();
@@ -468,9 +572,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // ===============================================
   // SYSTEM TAB
   // ===============================================
-  const checkApiBtn = document.getElementById('check-api-btn');
-  const apiStatus = document.getElementById('api-status');
-  const clearDataBtn = document.getElementById('clear-data-btn');
+  // Fix: Cast elements to their specific types.
+  const checkApiBtn = document.getElementById('check-api-btn') as HTMLButtonElement;
+  const apiStatus = document.getElementById('api-status') as HTMLElement;
+  const clearDataBtn = document.getElementById('clear-data-btn') as HTMLButtonElement;
   
   checkApiBtn.addEventListener('click', async () => {
     apiStatus.textContent = 'Pinging...';
@@ -503,11 +608,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // ===============================================
   // RECURRING TASKS
   // ===============================================
-  const RECURRING_TASKS_KEY = 'bitboy_ai_dex_tasks';
-  const taskForm = document.getElementById('recurring-task-form');
-  const taskInput = document.getElementById('recurring-task-input');
-  const taskSelect = document.getElementById('recurring-task-select');
-  const taskList = document.getElementById('recurring-task-list');
+  // Fix: Cast elements to their specific types.
+  const taskForm = document.getElementById('recurring-task-form') as HTMLFormElement;
+  const taskInput = document.getElementById('recurring-task-input') as HTMLInputElement;
+  const taskSelect = document.getElementById('recurring-task-select') as HTMLSelectElement;
+  const taskList = document.getElementById('recurring-task-list') as HTMLElement;
   let recurringTasks = [];
 
   function saveRecurringTasks() {
@@ -534,9 +639,11 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   }
   
+  // Fix: Cast e.target to HTMLElement to access its properties.
   taskList.addEventListener('click', (e) => {
-      if (e.target.classList.contains('delete-task-btn')) {
-          const index = parseInt(e.target.dataset.index, 10);
+      const target = e.target as HTMLElement;
+      if (target.classList.contains('delete-task-btn')) {
+          const index = parseInt(target.dataset.index, 10);
           recurringTasks.splice(index, 1);
           saveRecurringTasks();
           renderRecurringTasks();
