@@ -272,10 +272,16 @@
                 </div>
                 <hr class="sep">
                 <div>
-                    <h4>API Status</h4>
-                    <div class="row">
-                       <button id="check-api-btn">Check CoinGecko API</button>
-                       <p id="api-status" class="small mono"></p>
+                    <h4>API Settings & Status</h4>
+                    <div class="stack" style="gap: 12px;">
+                        <div class="stack" style="gap: 4px;" data-tooltip="Enter your CoinGecko API Key (Demo or Pro) for higher rate limits. This will be saved locally.">
+                            <label for="coingecko-api-key" class="small mono">CoinGecko API Key</label>
+                            <input type="text" id="coingecko-api-key" placeholder="Optional API Key...">
+                        </div>
+                        <div class="row">
+                           <button id="check-api-btn">Check CoinGecko API</button>
+                           <p id="api-status" class="small mono"></p>
+                        </div>
                     </div>
                 </div>
                 <hr class="sep">
@@ -310,17 +316,16 @@
             </div>
           </div>
         </div>
-        <div class="card">
+        <div class="card" style="flex-grow: 1; display: flex; flex-direction: column;">
           <h3>
             <span>AI Analyst Core</span>
             <div id="ai-status-indicator" class="status-dot disconnected" data-tooltip="AI Core Status"></div>
           </h3>
-          <div class="stack">
-            <p class="small">Enter a prompt to get analysis from your local Ollama model.</p>
-            <textarea id="ollama-prompt" rows="4" placeholder="e.g., What is the market sentiment for Bitcoin?"></textarea>
-            <button id="ollama-submit">Query AI Core</button>
-            <button id="suggest-prompts-btn" class="button-secondary">Suggest Prompts</button>
-            <div id="prompt-suggestions"></div>
+          <p class="small" style="margin-bottom: 8px;">Chat with your local Ollama model for market analysis.</p>
+          <div id="ai-chat-history"></div>
+          <div id="ai-chat-input-container" class="row">
+              <input type="text" id="ai-chat-input" placeholder="Ask AI Core..." style="flex: 1;">
+              <button id="ai-chat-send-btn">Send</button>
           </div>
         </div>
         <div class="card">

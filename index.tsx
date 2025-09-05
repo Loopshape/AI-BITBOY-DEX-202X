@@ -58,6 +58,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const FROM_TOKEN_KEY = 'dex_from_token';
   const TO_TOKEN_KEY = 'dex_to_token';
   const LEVERAGE_KEY = 'dex_leverage';
+  const AI_CHAT_HISTORY_KEY = 'bitboy_ai_dex_chat_history';
+  const COINGECKO_API_KEY = 'coingecko_api_key';
 
 
   // ===============================================
@@ -338,12 +340,22 @@ document.addEventListener('DOMContentLoaded', () => {
   // API & DATA FETCHING (CoinGecko)
   // ===============================================
   const COINGECKO_API_BASE = 'https://api.coingecko.com/api/v3';
+  let coinGeckoApiKey: string | null = null;
+
+  function getCoinGeckoUrl(endpoint: string): string {
+    const baseUrl = `${COINGECKO_API_BASE}${endpoint}`;
+    if (coinGeckoApiKey) {
+        const separator = baseUrl.includes('?') ? '&' : '?';
+        return `${baseUrl}${separator}x_cg_demo_api_key=${coinGeckoApiKey}`;
+    }
+    return baseUrl;
+  }
 
   async function checkCoinGeckoApi() {
     const statusEl = document.getElementById('api-status');
     if (!statusEl) return;
     try {
-      const response = await fetch(`${COINGECKO_API_BASE}/ping`);
+      const response = await fetch(getCoinGeckoUrl('/ping'));
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
       if (data.gecko_says) {
@@ -361,7 +373,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function fetchTokens() {
     logToConsole('Fetching token list...', 'info');
     try {
-        const response = await fetch(`${COINGECKO_API_BASE}/coins/list?include_platform=true`);
+        const response = await fetch(getCoinGeckoUrl('/coins/list?include_platform=true'));
         if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
         const tokens = await response.json();
         const ethTokens = tokens.filter((t: any) => t.platforms.ethereum);
@@ -370,6 +382,23 @@ document.addEventListener('DOMContentLoaded', () => {
         logToConsole(`Failed to fetch tokens: ${(error as Error).message}`, 'error');
     }
   }
+  
+    async function fetchTokenPrice(tokenId: string): Promise<number | null> {
+        if (!tokenId) return null;
+        try {
+            const response = await fetch(getCoinGeckoUrl(`/simple/price?ids=${tokenId}&vs_currencies=usd`));
+            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+            const data = await response.json();
+            const price = data[tokenId]?.usd;
+            if (price === undefined) {
+                throw new Error('Price not found in API response.');
+            }
+            return price;
+        } catch (error) {
+            logToConsole(`Failed to fetch price for ${tokenId}: ${(error as Error).message}`, 'error');
+            return null;
+        }
+    }
 
   function populateTokenSelects(tokens: any[]) {
       const fromTokenSelect = document.getElementById('from-token') as HTMLSelectElement;
@@ -407,7 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const listEl = document.getElementById('hot-pairs-list');
       if (!listEl) return;
       try {
-          const response = await fetch(`${COINGECKO_API_BASE}/search/trending`);
+          const response = await fetch(getCoinGeckoUrl('/search/trending'));
           if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
           const data = await response.json();
           listEl.innerHTML = ''; // Clear loading message
@@ -489,28 +518,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sellBtn) sellBtn.disabled = !isConnected;
   }
   
-  function executeTrade() {
-      // Fix: Add null checks for token selection elements
+  async function executeTrade() {
       if (!fromAmountInput || !fromTokenSelect || !toTokenSelect) {
-          logToConsole('Trading UI elements not found.', 'error');
-          return;
+          logToConsole('Trading UI elements not found.', 'error'); return;
       }
       
-      const fromAmount = fromAmountInput.value;
-      const fromToken = fromTokenSelect.value;
-      const toToken = toTokenSelect.value;
+      const fromAmount = parseFloat(fromAmountInput.value);
+      const fromTokenId = fromTokenSelect.value;
+      const toTokenId = toTokenSelect.value;
       const swapBtn = document.getElementById('swap-btn') as HTMLElement;
 
-      if (!fromAmount || !fromToken || !toToken) {
+      if (!fromAmount || !fromTokenId || !toTokenId) {
           logToConsole('Please fill all fields for the swap.', 'error');
-          swapBtn.classList.add('flash-error');
-          setTimeout(() => swapBtn.classList.remove('flash-error'), 700);
-          return;
-      }
-      
-      // Fix: Add check for selectedIndex to prevent crash if no token is selected
-      if (fromTokenSelect.selectedIndex < 0 || toTokenSelect.selectedIndex < 0) {
-          logToConsole('Please select both tokens for the trade.', 'error');
           swapBtn.classList.add('flash-error');
           setTimeout(() => swapBtn.classList.remove('flash-error'), 700);
           return;
@@ -522,28 +541,35 @@ document.addEventListener('DOMContentLoaded', () => {
       const toTokenSymbol = toTokenOption.text.match(/\(([^)]+)\)/)?.[1] || toTokenOption.value;
       
       logToConsole(`Executing trade: ${fromAmount} ${fromTokenSymbol} -> ${toTokenSymbol}...`, 'info');
+      logToConsole('Fetching live prices for simulation...', 'info');
+      
+      const [fromPrice, toPrice] = await Promise.all([fetchTokenPrice(fromTokenId), fetchTokenPrice(toTokenId)]);
+
+      if (fromPrice === null || toPrice === null) {
+          logToConsole('Could not fetch token prices for simulation. Aborting.', 'error');
+          return;
+      }
+
+      const fromValue = fromAmount * fromPrice;
+      const toAmount = fromValue / toPrice;
+      
+      logToConsole(`SIMULATION: Swapped ${fromAmount.toFixed(4)} ${fromTokenSymbol} (value: $${fromValue.toFixed(2)}) for approximately ${toAmount.toFixed(4)} ${toTokenSymbol}.`, 'ok');
+
       swapBtn.classList.add('flash-success');
       setTimeout(() => {
-          logToConsole('Trade submitted successfully! (Simulation)', 'ok');
           swapBtn.classList.remove('flash-success');
       }, 1500);
   }
 
-  function executeLeveragedTrade(type: 'BUY' | 'SELL', button: HTMLElement) {
+  async function executeLeveragedTrade(type: 'BUY' | 'SELL', button: HTMLElement) {
       if (!fromAmountInput || !fromTokenSelect || !leverageSlider) return;
-      const fromAmount = fromAmountInput.value;
-      const fromToken = fromTokenSelect.value;
-      const leverage = leverageSlider.value;
-
-      if (!fromAmount || !fromToken) {
-          logToConsole('Please input an amount and select a token to trade.', 'error');
-          button.classList.add('flash-error');
-          setTimeout(() => button.classList.remove('flash-error'), 700);
-          return;
-      }
       
-      if (fromTokenSelect.selectedIndex < 0) {
-          logToConsole('Please select a token to trade.', 'error');
+      const fromAmount = parseFloat(fromAmountInput.value);
+      const fromTokenId = fromTokenSelect.value;
+      const leverage = parseInt(leverageSlider.value, 10);
+
+      if (!fromAmount || !fromTokenId) {
+          logToConsole('Please input an amount and select a token to trade.', 'error');
           button.classList.add('flash-error');
           setTimeout(() => button.classList.remove('flash-error'), 700);
           return;
@@ -553,9 +579,36 @@ document.addEventListener('DOMContentLoaded', () => {
       const fromTokenSymbol = fromTokenOption.text.match(/\(([^)]+)\)/)?.[1] || fromTokenOption.value;
 
       logToConsole(`Executing ${type} trade: ${fromAmount} ${fromTokenSymbol} at ${leverage}x leverage...`, 'info');
+      logToConsole('Fetching live price for simulation...', 'info');
+
+      const entryPrice = await fetchTokenPrice(fromTokenId);
+      if (entryPrice === null) {
+          logToConsole(`Could not fetch price for ${fromTokenSymbol}. Aborting simulation.`, 'error');
+          return;
+      }
+
+      const positionValue = fromAmount * entryPrice * leverage;
+      const liquidationPrice = type === 'BUY'
+          ? entryPrice * (1 - (1 / leverage))
+          : entryPrice * (1 + (1 / leverage));
+      
+      const simulatedPriceChange = (Math.random() * 0.10) - 0.05; // -5% to +5%
+      const exitPrice = entryPrice * (1 + simulatedPriceChange);
+      
+      let pnl;
+      if (type === 'BUY') {
+          pnl = ((exitPrice - entryPrice) / entryPrice) * positionValue;
+      } else { // SELL
+          pnl = ((entryPrice - exitPrice) / entryPrice) * positionValue;
+      }
+
+      logToConsole(`SIMULATION [${type}]: Opened ${leverage}x ${fromTokenSymbol} position worth $${positionValue.toFixed(2)}.`, 'ok');
+      logToConsole(`> Entry Price: $${entryPrice.toFixed(4)}. Est. Liquidation: $${liquidationPrice.toFixed(4)}.`, 'info');
+      logToConsole(`> Simulating a ${(simulatedPriceChange * 100).toFixed(2)}% price change to $${exitPrice.toFixed(4)}...`, 'info');
+      logToConsole(`> Resulting PnL: $${pnl.toFixed(2)} (${pnl > 0 ? 'Profit' : 'Loss'}).`, pnl > 0 ? 'ok' : 'error');
+
       button.classList.add('flash-success');
       setTimeout(() => {
-          logToConsole('Leveraged trade submitted successfully! (Simulation)', 'ok');
           button.classList.remove('flash-success');
       }, 1500);
   }
@@ -601,17 +654,41 @@ document.addEventListener('DOMContentLoaded', () => {
   (document.getElementById('ollama-temperature') as HTMLInputElement).value = ollamaTemperature;
   (document.getElementById('ollama-max-tokens') as HTMLInputElement).value = ollamaMaxTokens;
 
+  let aiChatHistory: { role: 'user' | 'assistant', content: string }[] = [];
   const aiStatusIndicator = document.getElementById('ai-status-indicator') as HTMLElement;
+
+  function renderAiChatHistory() {
+      const historyEl = document.getElementById('ai-chat-history');
+      if (!historyEl) return;
+      historyEl.innerHTML = '';
+      aiChatHistory.forEach(msg => {
+          const msgEl = document.createElement('div');
+          msgEl.className = `chat-message ${msg.role}-message`;
+          msgEl.textContent = msg.content;
+          historyEl.appendChild(msgEl);
+      });
+      historyEl.scrollTop = historyEl.scrollHeight;
+  }
+
+  function saveAiChatHistory() {
+      localStorage.setItem(AI_CHAT_HISTORY_KEY, JSON.stringify(aiChatHistory));
+  }
+
+  function loadAiChatHistory() {
+      const storedHistory = localStorage.getItem(AI_CHAT_HISTORY_KEY);
+      if (storedHistory) {
+          aiChatHistory = JSON.parse(storedHistory);
+          renderAiChatHistory();
+      }
+  }
+
   async function checkAiStatus() {
       if (!aiStatusIndicator) return;
-      
-      // Set to checking state
       aiStatusIndicator.classList.remove('connected', 'disconnected');
       aiStatusIndicator.classList.add('checking');
       aiStatusIndicator.dataset.tooltip = 'Checking AI Core...';
 
       try {
-          // Use a lightweight endpoint with a 5-second timeout
           const response = await fetch(`${ollamaApiUrl}/api/tags`, {
               signal: AbortSignal.timeout(5000) 
           });
@@ -623,11 +700,9 @@ document.addEventListener('DOMContentLoaded', () => {
           aiStatusIndicator.classList.add('disconnected');
           aiStatusIndicator.dataset.tooltip = 'AI Core Disconnected. Is Ollama running?';
       } finally {
-          // Always remove the checking state
           aiStatusIndicator.classList.remove('checking');
       }
   }
-
 
   async function queryOllama(prompt: string) {
     logToConsole('Querying AI Core...', 'info');
@@ -651,46 +726,75 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!response.ok) throw new Error(`Ollama API Error: ${response.statusText}`);
         const data = await response.json();
         logToConsole(`AI Response: ${data.response}`, 'ok');
+
+        aiChatHistory[aiChatHistory.length - 1].content = data.response;
+        saveAiChatHistory();
+        renderAiChatHistory();
+
     } catch (error) {
-        logToConsole(`AI Core Error: ${(error as Error).message}. Is Ollama running?`, 'error');
+        const errorMessage = `AI Core Error: ${(error as Error).message}. Is Ollama running?`;
+        logToConsole(errorMessage, 'error');
+        aiChatHistory[aiChatHistory.length - 1].content = `Sorry, I encountered an error: ${(error as Error).message}`;
+        saveAiChatHistory();
+        renderAiChatHistory();
         checkAiStatus(); // Update status on error
     }
   }
+  
+    async function sendChatMessage() {
+        const input = document.getElementById('ai-chat-input') as HTMLInputElement;
+        const prompt = input.value.trim();
+        if (!prompt) return;
+
+        aiChatHistory.push({ role: 'user', content: prompt });
+        aiChatHistory.push({ role: 'assistant', content: '...' });
+        saveAiChatHistory();
+        renderAiChatHistory();
+        input.value = '';
+
+        await queryOllama(prompt);
+    }
 
   async function getAiTradeSignal() {
-      if (!fromTokenSelect || !toTokenSelect) return;
+      if (!fromTokenSelect || !toTokenSelect || !leverageSlider) return;
       
-      // Fix: Add robustness for unselected tokens
-      if (fromTokenSelect.selectedIndex < 0 || toTokenSelect.selectedIndex < 0) {
+      if (fromTokenSelect.selectedIndex <= 0 || toTokenSelect.selectedIndex <= 0) {
           logToConsole('Please select both tokens to get an AI signal.', 'error');
           (document.getElementById('ai-signal-btn') as HTMLElement).classList.add('flash-error');
           return;
       }
 
+      const fromTokenId = fromTokenSelect.value;
+      const toTokenId = toTokenSelect.value;
+      const leverage = leverageSlider.value;
+      
       const fromTokenText = fromTokenSelect.options[fromTokenSelect.selectedIndex].text;
       const toTokenText = toTokenSelect.options[toTokenSelect.selectedIndex].text;
       
-      // Fix: Improve regex and add null check
-      const fromMatch = fromTokenText.match(/\(([^)]+)\)/);
-      const toMatch = toTokenText.match(/\(([^)]+)\)/);
-
-      if (!fromMatch || !toMatch) {
-          logToConsole('Could not determine token symbols for AI signal.', 'error');
-          return;
-      }
+      logToConsole('Fetching prices for AI context...', 'info');
+      const [fromPrice, toPrice] = await Promise.all([fetchTokenPrice(fromTokenId), fetchTokenPrice(toTokenId)]);
       
-      const fromTokenSymbol = fromMatch[1];
-      const toTokenSymbol = toMatch[1];
+      let priceContext = "Current prices are unavailable.";
+      if(fromPrice !== null && toPrice !== null) {
+        priceContext = `The current price of ${fromTokenText} is approximately $${fromPrice.toFixed(4)} and ${toTokenText} is $${toPrice.toFixed(4)}.`;
+      }
 
-      const prompt = `Analyze the current market sentiment for a trade between ${fromTokenText} and ${toTokenText}. Should I BUY/LONG or SELL/SHORT the ${fromTokenSymbol}/${toTokenSymbol} pair? Provide a brief justification.`;
-      queryOllama(prompt);
+      const prompt = `Analyze the current market sentiment for a trade between ${fromTokenText} and ${toTokenText}. ${priceContext} I am considering a trade with ${leverage}x leverage. Based on this data, should I execute a BUY/LONG or a SELL/SHORT position? Provide a brief justification for your recommendation.`;
+      
+      aiChatHistory.push({ role: 'user', content: prompt });
+      aiChatHistory.push({ role: 'assistant', content: '...' });
+      saveAiChatHistory();
+      renderAiChatHistory();
+
+      await queryOllama(prompt);
   }
   
   document.getElementById('ai-signal-btn')?.addEventListener('click', getAiTradeSignal);
-  document.getElementById('ollama-submit')?.addEventListener('click', () => {
-    const prompt = (document.getElementById('ollama-prompt') as HTMLTextAreaElement).value;
-    if (prompt) queryOllama(prompt);
-    else logToConsole('AI prompt cannot be empty.', 'warn');
+  document.getElementById('ai-chat-send-btn')?.addEventListener('click', sendChatMessage);
+  document.getElementById('ai-chat-input')?.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+          sendChatMessage();
+      }
   });
 
   document.getElementById('save-settings-btn')?.addEventListener('click', () => {
@@ -698,36 +802,26 @@ document.addEventListener('DOMContentLoaded', () => {
       ollamaModelName = (document.getElementById('ollama-model-name') as HTMLInputElement).value;
       ollamaTemperature = (document.getElementById('ollama-temperature') as HTMLInputElement).value;
       ollamaMaxTokens = (document.getElementById('ollama-max-tokens') as HTMLInputElement).value;
+      const newApiKey = (document.getElementById('coingecko-api-key') as HTMLInputElement).value.trim();
 
       localStorage.setItem('ollamaApiUrl', ollamaApiUrl);
       localStorage.setItem('ollamaModelName', ollamaModelName);
       localStorage.setItem('ollama_temperature', ollamaTemperature);
       localStorage.setItem('ollama_max_tokens', ollamaMaxTokens);
+      
+      if (newApiKey) {
+          localStorage.setItem(COINGECKO_API_KEY, newApiKey);
+          coinGeckoApiKey = newApiKey;
+      } else {
+          localStorage.removeItem(COINGECKO_API_KEY);
+          coinGeckoApiKey = null;
+      }
 
-      logToConsole('AI settings saved.', 'ok');
+      logToConsole('Settings saved.', 'ok');
       checkAiStatus(); // Re-check status after saving
+      checkCoinGeckoApi();
   });
 
-  document.getElementById('suggest-prompts-btn')?.addEventListener('click', () => {
-      const suggestions = [
-          "What is the current market trend for Ethereum?",
-          "Analyze the risk profile of Solana vs Cardano.",
-          "Give me a bullish case for Bitcoin in the next 6 months.",
-          "Provide a bearish case for meme coins.",
-      ];
-      const container = document.getElementById('prompt-suggestions') as HTMLElement;
-      container.innerHTML = '';
-      suggestions.forEach(prompt => {
-          const p = document.createElement('div');
-          p.textContent = prompt;
-          p.className = 'prompt-suggestion';
-          p.onclick = () => {
-              (document.getElementById('ollama-prompt') as HTMLTextAreaElement).value = prompt;
-              container.innerHTML = '';
-          };
-          container.appendChild(p);
-      });
-  });
 
   // ===============================================
   // RECURRING TASKS
@@ -1131,6 +1225,12 @@ document.addEventListener('DOMContentLoaded', () => {
           leverageSlider.value = savedLeverage;
           leverageValueSpan.textContent = `${savedLeverage}x`;
       }
+      
+      const savedApiKey = localStorage.getItem(COINGECKO_API_KEY);
+      if (savedApiKey) {
+          coinGeckoApiKey = savedApiKey;
+          (document.getElementById('coingecko-api-key') as HTMLInputElement).value = savedApiKey;
+      }
   }
 
   document.getElementById('check-api-btn')?.addEventListener('click', checkCoinGeckoApi);
@@ -1145,6 +1245,8 @@ document.addEventListener('DOMContentLoaded', () => {
           localStorage.removeItem(FROM_TOKEN_KEY);
           localStorage.removeItem(TO_TOKEN_KEY);
           localStorage.removeItem(LEVERAGE_KEY);
+          localStorage.removeItem(AI_CHAT_HISTORY_KEY);
+          localStorage.removeItem(COINGECKO_API_KEY);
           logToConsole('All local data cleared.', 'warn');
           loadTasks();
           renderTasks();
@@ -1157,6 +1259,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initial calls on page load
   logToConsole('NEMODIAN COREMOVEMENT initialized.', 'info');
   updateTradeButtonsState();
+  loadPersistentSettings();
   fetchTokens();
   fetchHotPairs();
   checkCoinGeckoApi();
@@ -1164,7 +1267,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderTasks();
   loadKanbanTasks();
   renderKanbanBoard();
-  loadPersistentSettings();
+  loadAiChatHistory();
   checkAiStatus();
   setInterval(checkAiStatus, 30000); // Check AI status every 30 seconds
 });
