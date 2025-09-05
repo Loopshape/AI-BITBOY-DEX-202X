@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
               qrModalAddress.textContent = walletAddress;
               qrModal.style.display = 'flex';
           } catch (err) {
-              logToConsole(`Failed to generate QR code: ${err.message}`, 'error');
+              logToConsole(`Failed to generate QR code: ${(err as Error).message}`, 'error');
           }
       }
   };
@@ -231,7 +231,10 @@ document.addEventListener('DOMContentLoaded', () => {
               // Fix: The method getWalletProvider() is not available on modern Web3Modal versions.
               // Instead, we subscribe to provider changes before opening the modal.
               let provider: any = null;
-              const unsubscribe = web3Modal.subscribeProvider(newState => {
+              // FIX: The `subscribeProvider` method is not available on this `Web3Modal` version.
+              // Replaced with `subscribeState` which is the modern equivalent for observing provider changes.
+              // Cast to `any` to bypass strict type-checking as the method might be dynamically available.
+              const unsubscribe = (web3Modal as any).subscribeState((newState: any) => {
                   provider = newState.provider;
               });
 
@@ -256,12 +259,12 @@ document.addEventListener('DOMContentLoaded', () => {
                   web3Provider = cliProvider;
                   await updateWalletInfo(web3Provider);
               } catch (cliError) {
-                  logToConsole(`CLI wallet connection failed: ${cliError.message}. Is a local node (like Hardhat/Anvil) with an unlocked account running at http://localhost:8545?`, 'error');
+                  logToConsole(`CLI wallet connection failed: ${(cliError as Error).message}. Is a local node (like Hardhat/Anvil) with an unlocked account running at http://localhost:8545?`, 'error');
                   disconnectWallet();
               }
           }
       } catch (error) {
-          logToConsole(`Wallet connection failed: ${error.message}`, 'error');
+          logToConsole(`Wallet connection failed: ${(error as Error).message}`, 'error');
           disconnectWallet();
       }
   }
@@ -292,7 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
       logToConsole(`Wallet connected: ${walletAddress} on ${network.name}.`, 'ok');
       updateTradeButtonsState();
     } catch (error) {
-        logToConsole(`Failed to update wallet info: ${error.message}`, 'error');
+        logToConsole(`Failed to update wallet info: ${(error as Error).message}`, 'error');
         disconnectWallet();
     }
   }
@@ -301,10 +304,10 @@ document.addEventListener('DOMContentLoaded', () => {
   async function disconnectWallet() {
       if (web3Provider?.provider) {
         removeProviderEvents(web3Provider.provider);
-      }
-      // Fix: Replace deprecated `getIsConnected` and `disconnect` with modern equivalents.
-      if (web3Modal.getState().isConnected) {
-        await web3Modal.disconnect();
+        // FIX: In modern Web3Modal versions, disconnection is handled by the provider (e.g., from WalletConnect), not the modal instance itself.
+        if (typeof (web3Provider.provider as any).disconnect === 'function') {
+          await (web3Provider.provider as any).disconnect();
+        }
       }
 
       web3Provider = null;
@@ -351,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
       statusEl.textContent = 'Error';
       statusEl.style.color = 'var(--color-neon-red)';
-      logToConsole(`CoinGecko API error: ${error.message}`, 'error');
+      logToConsole(`CoinGecko API error: ${(error as Error).message}`, 'error');
     }
   }
 
@@ -361,10 +364,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const response = await fetch(`${COINGECKO_API_BASE}/coins/list?include_platform=true`);
         if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
         const tokens = await response.json();
-        const ethTokens = tokens.filter(t => t.platforms.ethereum);
+        const ethTokens = tokens.filter((t: any) => t.platforms.ethereum);
         populateTokenSelects(ethTokens);
     } catch (error) {
-        logToConsole(`Failed to fetch tokens: ${error.message}`, 'error');
+        logToConsole(`Failed to fetch tokens: ${(error as Error).message}`, 'error');
     }
   }
 
@@ -408,7 +411,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
           const data = await response.json();
           listEl.innerHTML = ''; // Clear loading message
-          data.coins.slice(0, 7).forEach(coinItem => {
+          data.coins.slice(0, 7).forEach((coinItem: any) => {
               const { item } = coinItem;
               const pairEl = document.createElement('div');
               pairEl.className = 'dex-pair fade-in';
@@ -425,7 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
           });
       } catch (error) {
           listEl.innerHTML = '<p class="small" style="color: var(--color-neon-red);">Could not load hot pairs.</p>';
-          logToConsole(`Failed to fetch hot pairs: ${error.message}`, 'error');
+          logToConsole(`Failed to fetch hot pairs: ${(error as Error).message}`, 'error');
       }
   }
 
@@ -590,24 +593,38 @@ document.addEventListener('DOMContentLoaded', () => {
   // ===============================================
   let ollamaApiUrl = localStorage.getItem('ollamaApiUrl') || 'http://localhost:11434';
   let ollamaModelName = localStorage.getItem('ollamaModelName') || 'llama3';
+  let ollamaTemperature = localStorage.getItem('ollama_temperature') || '0.8';
+  let ollamaMaxTokens = localStorage.getItem('ollama_max_tokens') || '-1';
   
   (document.getElementById('ollama-api-url') as HTMLInputElement).value = ollamaApiUrl;
   (document.getElementById('ollama-model-name') as HTMLInputElement).value = ollamaModelName;
+  (document.getElementById('ollama-temperature') as HTMLInputElement).value = ollamaTemperature;
+  (document.getElementById('ollama-max-tokens') as HTMLInputElement).value = ollamaMaxTokens;
 
   const aiStatusIndicator = document.getElementById('ai-status-indicator') as HTMLElement;
   async function checkAiStatus() {
       if (!aiStatusIndicator) return;
+      
+      // Set to checking state
+      aiStatusIndicator.classList.remove('connected', 'disconnected');
+      aiStatusIndicator.classList.add('checking');
+      aiStatusIndicator.dataset.tooltip = 'Checking AI Core...';
+
       try {
-          // Use a lightweight endpoint to check for connection
-          const response = await fetch(`${ollamaApiUrl}/api/tags`);
+          // Use a lightweight endpoint with a 5-second timeout
+          const response = await fetch(`${ollamaApiUrl}/api/tags`, {
+              signal: AbortSignal.timeout(5000) 
+          });
           if (!response.ok) throw new Error('API not responding');
-          aiStatusIndicator.classList.remove('disconnected');
+          
           aiStatusIndicator.classList.add('connected');
           aiStatusIndicator.dataset.tooltip = 'AI Core Connected';
       } catch (error) {
-          aiStatusIndicator.classList.remove('connected');
           aiStatusIndicator.classList.add('disconnected');
           aiStatusIndicator.dataset.tooltip = 'AI Core Disconnected. Is Ollama running?';
+      } finally {
+          // Always remove the checking state
+          aiStatusIndicator.classList.remove('checking');
       }
   }
 
@@ -615,16 +632,27 @@ document.addEventListener('DOMContentLoaded', () => {
   async function queryOllama(prompt: string) {
     logToConsole('Querying AI Core...', 'info');
     try {
+        const temperature = parseFloat(ollamaTemperature);
+        const num_predict = parseInt(ollamaMaxTokens, 10);
+
         const response = await fetch(`${ollamaApiUrl}/api/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: ollamaModelName, prompt: prompt, stream: false })
+            body: JSON.stringify({
+                model: ollamaModelName,
+                prompt: prompt,
+                stream: false,
+                options: {
+                    temperature: isNaN(temperature) ? 0.8 : temperature,
+                    num_predict: isNaN(num_predict) ? -1 : num_predict
+                }
+            })
         });
         if (!response.ok) throw new Error(`Ollama API Error: ${response.statusText}`);
         const data = await response.json();
         logToConsole(`AI Response: ${data.response}`, 'ok');
     } catch (error) {
-        logToConsole(`AI Core Error: ${error.message}. Is Ollama running?`, 'error');
+        logToConsole(`AI Core Error: ${(error as Error).message}. Is Ollama running?`, 'error');
         checkAiStatus(); // Update status on error
     }
   }
@@ -668,8 +696,14 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('save-settings-btn')?.addEventListener('click', () => {
       ollamaApiUrl = (document.getElementById('ollama-api-url') as HTMLInputElement).value;
       ollamaModelName = (document.getElementById('ollama-model-name') as HTMLInputElement).value;
+      ollamaTemperature = (document.getElementById('ollama-temperature') as HTMLInputElement).value;
+      ollamaMaxTokens = (document.getElementById('ollama-max-tokens') as HTMLInputElement).value;
+
       localStorage.setItem('ollamaApiUrl', ollamaApiUrl);
       localStorage.setItem('ollamaModelName', ollamaModelName);
+      localStorage.setItem('ollama_temperature', ollamaTemperature);
+      localStorage.setItem('ollama_max_tokens', ollamaMaxTokens);
+
       logToConsole('AI settings saved.', 'ok');
       checkAiStatus(); // Re-check status after saving
   });
@@ -808,7 +842,7 @@ document.addEventListener('DOMContentLoaded', () => {
       );
   }
 
-  function arrayBufferToBase64(buffer) {
+  function arrayBufferToBase64(buffer: ArrayBuffer) {
       let binary = '';
       const bytes = new Uint8Array(buffer);
       for (let i = 0; i < bytes.byteLength; i++) {
@@ -817,7 +851,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return window.btoa(binary);
   }
 
-  function base64ToArrayBuffer(base64) {
+  function base64ToArrayBuffer(base64: string) {
       const binary_string = window.atob(base64);
       const len = binary_string.length;
       const bytes = new Uint8Array(len);
@@ -898,7 +932,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderResult('Seed (Hex)', seed.substring(0, 32) + '...');
       }
     } catch (e) {
-        renderResult('Error', e.message, false);
+        renderResult('Error', (e as Error).message, false);
     }
   });
   
@@ -906,7 +940,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // ===============================================
   // HRC203X KANBAN
   // ===============================================
-  let kanbanTasks = {
+  let kanbanTasks: {
+      backlog: any[],
+      inprogress: any[],
+      completed: any[]
+  } = {
       backlog: [],
       inprogress: [],
       completed: []
@@ -936,7 +974,7 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem(KANBAN_TASKS_KEY, JSON.stringify(kanbanTasks));
   }
 
-  function createKanbanTaskElement(task) {
+  function createKanbanTaskElement(task: any) {
       const taskEl = document.createElement('div');
       taskEl.className = 'kanban-task';
       taskEl.draggable = true;
@@ -954,7 +992,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const column = document.querySelector(`.kanban-column[data-status="${status}"] .kanban-tasks`);
           if (column) {
               column.innerHTML = '';
-              kanbanTasks[status].forEach(task => {
+              (kanbanTasks as any)[status].forEach((task: any) => {
                   column.appendChild(createKanbanTaskElement(task));
               });
           }
@@ -979,11 +1017,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Drag and Drop Logic
-  let draggedItemId = null;
+  let draggedItemId: string | null = null;
   document.getElementById('kanban-board')?.addEventListener('dragstart', (e) => {
       const target = e.target as HTMLElement;
       if (target.classList.contains('kanban-task')) {
-          draggedItemId = target.dataset.id;
+          draggedItemId = target.dataset.id || null;
           setTimeout(() => target.classList.add('dragging'), 0);
       }
   });
@@ -1005,14 +1043,14 @@ document.addEventListener('DOMContentLoaded', () => {
       column.addEventListener('drop', (e) => {
           e.preventDefault();
           column.classList.remove('drag-over');
-          const newStatus = (column as HTMLElement).dataset.status;
+          const newStatus = (column as HTMLElement).dataset.status as keyof typeof kanbanTasks;
           if (draggedItemId && newStatus) {
               let taskToMove;
               let oldStatus;
               for (const status in kanbanTasks) {
-                  const taskIndex = kanbanTasks[status].findIndex(t => t.id === draggedItemId);
+                  const taskIndex = (kanbanTasks as any)[status].findIndex((t: any) => t.id === draggedItemId);
                   if (taskIndex > -1) {
-                      taskToMove = kanbanTasks[status].splice(taskIndex, 1)[0];
+                      taskToMove = (kanbanTasks as any)[status].splice(taskIndex, 1)[0];
                       oldStatus = status;
                       break;
                   }
@@ -1031,7 +1069,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (target.matches('.delete-task-btn')) {
           const taskId = target.dataset.id;
           for (const status in kanbanTasks) {
-              kanbanTasks[status] = kanbanTasks[status].filter(t => t.id !== taskId);
+              (kanbanTasks as any)[status] = (kanbanTasks as any)[status].filter((t: any) => t.id !== taskId);
           }
           saveKanbanTasks();
           renderKanbanBoard();
@@ -1102,6 +1140,8 @@ document.addEventListener('DOMContentLoaded', () => {
           localStorage.removeItem(KANBAN_TASKS_KEY);
           localStorage.removeItem('ollamaApiUrl');
           localStorage.removeItem('ollamaModelName');
+          localStorage.removeItem('ollama_temperature');
+          localStorage.removeItem('ollama_max_tokens');
           localStorage.removeItem(FROM_TOKEN_KEY);
           localStorage.removeItem(TO_TOKEN_KEY);
           localStorage.removeItem(LEVERAGE_KEY);

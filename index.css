@@ -296,6 +296,15 @@ hr.sep { border:0; border-top:1px dashed #00ffcc55; margin:10px 0; }
     box-shadow: 0 0 8px var(--color-neon-green);
     animation: pulse 2s infinite;
 }
+@keyframes pulse-check {
+  0% { box-shadow: 0 0 6px var(--color-neon-blue); }
+  50% { box-shadow: 0 0 14px var(--color-neon-blue), 0 0 18px #fff; }
+  100% { box-shadow: 0 0 6px var(--color-neon-blue); }
+}
+.status-dot.checking {
+    background-color: var(--color-neon-blue);
+    animation: pulse-check 1.5s infinite;
+}
 #header-wallet-info {
     display: flex;
     align-items: center;

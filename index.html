@@ -257,6 +257,16 @@
                           <label for="ollama-model-name" class="small mono">Model Name</label>
                           <input type="text" id="ollama-model-name" placeholder="e.g., llama3, codellama">
                       </div>
+                      <div class="row" style="gap: 16px;">
+                          <div class="stack" style="gap: 4px; flex: 1;" data-tooltip="Controls randomness. Lower values are more deterministic. Default: 0.8">
+                              <label for="ollama-temperature" class="small mono">Temperature</label>
+                              <input type="number" id="ollama-temperature" step="0.1" min="0" max="2">
+                          </div>
+                          <div class="stack" style="gap: 4px; flex: 1;" data-tooltip="Max tokens to generate. Use -1 for infinite. Default: -1">
+                              <label for="ollama-max-tokens" class="small mono">Max Tokens (num_predict)</label>
+                              <input type="number" id="ollama-max-tokens" step="1" min="-1">
+                          </div>
+                      </div>
                       <button id="save-settings-btn" style="align-self: flex-start;">Save Settings</button>
                   </div>
                 </div>
