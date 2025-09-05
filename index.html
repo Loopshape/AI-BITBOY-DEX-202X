@@ -97,7 +97,16 @@
                       </div>
                       <div class="stack" style="flex: 2;">
                           <label for="leverage-slider" class="small">Leverage: <span id="leverage-value" class="mono">2x</span></label>
-                          <input type="range" id="leverage-slider" min="1" max="100" value="2">
+                          <input type="range" id="leverage-slider" min="1" max="200" value="2">
+                           <div id="leverage-presets" class="row" style="gap: 8px; margin-top: 8px;">
+                              <button class="leverage-preset-btn" data-value="10">10%</button>
+                              <button class="leverage-preset-btn" data-value="25">25%</button>
+                              <button class="leverage-preset-btn" data-value="33">33%</button>
+                              <button class="leverage-preset-btn" data-value="50">50%</button>
+                              <button class="leverage-preset-btn" data-value="75">75%</button>
+                              <button class="leverage-preset-btn" data-value="100">100%</button>
+                              <button class="leverage-preset-btn" data-value="200">200%</button>
+                          </div>
                       </div>
                   </div>
                   <div class="trade-btn-container">

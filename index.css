@@ -304,6 +304,21 @@ input[type=range]::-moz-range-thumb {
   box-shadow: 0 0 8px #00ffcc;
 }
 
+.leverage-preset-btn {
+    background: rgba(0, 204, 255, 0.1);
+    color: #00ccff;
+    border: 1px solid #00ccff55;
+    padding: 4px 10px;
+    font-size: .8em;
+    border-radius: 999px;
+    box-shadow: none;
+}
+.leverage-preset-btn:hover {
+    background: rgba(0, 204, 255, 0.3);
+    border-color: #00ccff;
+    box-shadow: none;
+}
+
 /* ================== MODAL ================== */
 .modal-overlay {
   position: fixed;

@@ -377,6 +377,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const sellShortBtn = document.getElementById('sell-short-btn') as HTMLButtonElement;
   const leverageSlider = document.getElementById('leverage-slider') as HTMLInputElement;
   const leverageValue = document.getElementById('leverage-value') as HTMLSpanElement;
+  const leveragePresetsContainer = document.getElementById('leverage-presets') as HTMLElement;
+
 
   let userAccount = null;
   let provider = null; // To hold the active wallet provider (MetaMask or WC)
@@ -385,7 +387,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const web3Modal = new Web3Modal({
       // IMPORTANT: Replace with your own WalletConnect Cloud project ID
       projectId: '4a0b3694be05a0657c0b7880916388bc', // Using a generic public one for demo purposes
-      walletConnectVersion: 2,
   });
   
   const connectModal = document.getElementById('connect-modal') as HTMLElement;
@@ -499,7 +500,10 @@ document.addEventListener('DOMContentLoaded', () => {
   connectWalletConnectBtn.addEventListener('click', async () => {
       try {
           logToConsole('Opening WalletConnect modal...', 'info');
-          const wcProvider = await web3Modal.connect();
+          // Fix: The `.connect()` method is part of an older Web3Modal API.
+          // The modern equivalent is often `.open()`. We cast to `any` to bypass
+          // strict type checking, assuming a potential version mismatch.
+          const wcProvider = await (web3Modal as any).open();
           await onConnect(wcProvider);
       } catch (error) {
           logToConsole(`WalletConnect connection failed: ${error.message}`, 'error');
@@ -634,6 +638,19 @@ Based on this data, provide a clear signal including:
   leverageSlider.addEventListener('input', (e) => {
     leverageValue.textContent = `${(e.target as HTMLInputElement).value}x`;
   });
+  
+  leveragePresetsContainer.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    if (target.classList.contains('leverage-preset-btn')) {
+        const value = target.dataset.value;
+        if (value) {
+            leverageSlider.value = value;
+            // Trigger the input event to update the label
+            leverageSlider.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    }
+  });
+
 
   function executeTrade(direction) {
     const fromTokenSelect = document.getElementById('from-token') as HTMLSelectElement;
