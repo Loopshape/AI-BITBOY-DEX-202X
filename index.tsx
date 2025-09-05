@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ===============================================
   // TRADINGVIEW WIDGET
   // ===============================================
-  function updateTradingViewWidget(symbol = 'COINBASE:BTCUSD') {
+  function updateTradingViewWidget(symbol = 'BINANCE:BTCUSD') {
     const container = document.getElementById('tradingview-widget-container');
     if (!container || typeof TradingView === 'undefined') return;
 
@@ -184,7 +184,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Update the TradingView widget, ignoring the custom token
     if (tokenSymbol.toUpperCase() !== 'BITBOY') {
-      updateTradingViewWidget(`COINBASE:${tokenSymbol.toUpperCase()}USD`);
+      // Using Binance for better token pair availability
+      updateTradingViewWidget(`BINANCE:${tokenSymbol.toUpperCase()}USD`);
     }
   }
 
