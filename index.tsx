@@ -1,5 +1,7 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
+import * as bip39 from 'bip39';
+import { Web3Modal } from '@web3modal/standalone';
+
 
 // Fix: Declare VANTA to make it available in TypeScript
 declare var VANTA: any;
@@ -111,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         // Add event listener to pre-fill AI prompt on click
         pairEl.addEventListener('click', () => {
-            setAiPromptForToken(coin.item.name, coin.item.symbol);
+            setAiPromptForToken(coin.item.name, coin.item.symbol, coin.item.id);
         });
         hotPairsList.appendChild(pairEl);
       });
@@ -170,8 +172,55 @@ document.addEventListener('DOMContentLoaded', () => {
   const promptSuggestionsContainer = document.getElementById('prompt-suggestions') as HTMLElement;
 
   // Function to pre-fill the AI prompt based on a selected token
-  function setAiPromptForToken(tokenName, tokenSymbol) {
-    const prompt = `Provide a detailed market analysis for ${tokenName} (${tokenSymbol.toUpperCase()}). What are the recent trends, potential price targets, and overall market sentiment?`;
+  async function setAiPromptForToken(tokenName, tokenSymbol, tokenId) {
+    let prompt = `Provide a detailed market analysis for ${tokenName} (${tokenSymbol.toUpperCase()}). What are the recent trends, potential price targets, and overall market sentiment?`;
+
+    // Fetch price to add context, but don't for the custom token
+    if (tokenId && tokenId.toUpperCase() !== 'BITBOY') {
+      try {
+        logToConsole(`Fetching market data for ${tokenName}...`, 'info');
+        
+        const [priceResponse, chartResponse] = await Promise.all([
+            fetch(`${COINGECKO_API_BASE}/simple/price?ids=${tokenId}&vs_currencies=usd&include_24hr_change=true`),
+            fetch(`${COINGECKO_API_BASE}/coins/${tokenId}/market_chart?vs_currency=usd&days=7&interval=daily`)
+        ]);
+
+        if (!priceResponse.ok) throw new Error(`Price fetch failed: ${priceResponse.statusText}`);
+        if (!chartResponse.ok) throw new Error(`Chart fetch failed: ${chartResponse.statusText}`);
+        
+        const priceData = await priceResponse.json();
+        const chartData = await chartResponse.json();
+
+        const currentPriceData = priceData[tokenId];
+        const prices = chartData.prices;
+
+        if (currentPriceData && currentPriceData.usd !== undefined) {
+          const price = currentPriceData.usd;
+          const change = currentPriceData.usd_24h_change || 0;
+          let trendText = "";
+
+          if (prices && prices.length > 1) {
+              const startPrice = prices[0][1];
+              // Use live price for more accuracy vs last daily close from chart data
+              const endPrice = price; 
+              const sevenDayChange = ((endPrice - startPrice) / startPrice) * 100;
+              trendText = ` Over the past week, its price has changed by approximately ${sevenDayChange.toFixed(2)}%.`;
+              logToConsole(`7-day trend for ${tokenName}: ${sevenDayChange.toFixed(2)}%`, 'info');
+          }
+
+          logToConsole(`Current ${tokenName} price: $${price.toFixed(2)} (24h: ${change.toFixed(2)}%)`, 'info');
+
+          prompt = `Provide a detailed market analysis for ${tokenName} (${tokenSymbol.toUpperCase()}). Its current price is approximately $${price.toFixed(2)} USD, with a 24-hour change of ${change.toFixed(2)}%.${trendText} Based on this data, what are the recent trends, potential price targets, and overall market sentiment?`;
+
+        } else {
+            logToConsole(`Could not find price data for ${tokenName}. Using generic prompt.`, 'warn');
+        }
+      } catch (error) {
+        logToConsole(`Failed to fetch market data for ${tokenName}: ${error.message}`, 'error');
+        // Fallback to the generic prompt if API call fails
+      }
+    }
+    
     aiPromptInput.value = prompt;
     logToConsole(`AI prompt pre-filled for ${tokenName}.`, 'info');
     
@@ -193,6 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
     logToConsole(`Querying Gemini AI Core...`, 'info');
     aiSubmitBtn.disabled = true;
     aiSubmitBtn.textContent = 'Thinking...';
+    aiSignalBtn.disabled = true; // Also disable signal button during query
     try {
         const result = await ai.models.generateContentStream({
             model: "gemini-2.5-flash",
@@ -216,6 +266,10 @@ document.addEventListener('DOMContentLoaded', () => {
     } finally {
         aiSubmitBtn.disabled = false;
         aiSubmitBtn.textContent = 'Query AI Core';
+        // Re-enable signal button only if wallet is connected
+        if (userAccount) {
+            aiSignalBtn.disabled = false;
+        }
     }
   }
 
@@ -315,12 +369,44 @@ document.addEventListener('DOMContentLoaded', () => {
   // ===============================================
   // BITBOY AI-DEX LOGIC
   // ===============================================
-  // Fix: Cast button elements to HTMLButtonElement to access properties like 'disabled'.
   const connectWalletBtn = document.getElementById('connect-wallet-btn') as HTMLButtonElement;
   const disconnectWalletBtn = document.getElementById('disconnect-wallet-btn') as HTMLButtonElement;
   const swapBtn = document.getElementById('swap-btn') as HTMLButtonElement;
   const aiSignalBtn = document.getElementById('ai-signal-btn') as HTMLButtonElement;
+  const buyLongBtn = document.getElementById('buy-long-btn') as HTMLButtonElement;
+  const sellShortBtn = document.getElementById('sell-short-btn') as HTMLButtonElement;
+  const leverageSlider = document.getElementById('leverage-slider') as HTMLInputElement;
+  const leverageValue = document.getElementById('leverage-value') as HTMLSpanElement;
+
   let userAccount = null;
+  let provider = null; // To hold the active wallet provider (MetaMask or WC)
+
+  // WalletConnect Modal
+    const web3Modal = new Web3Modal({
+      // IMPORTANT: Replace with your own WalletConnect Cloud project ID
+      projectId: '4a0b3694be05a0657c0b7880916388bc', // Using a generic public one for demo purposes
+      walletConnectVersion: 2,
+  });
+  
+  const connectModal = document.getElementById('connect-modal') as HTMLElement;
+  const closeModalBtn = document.getElementById('close-modal-btn') as HTMLButtonElement;
+  const connectMetaMaskBtn = document.getElementById('connect-metamask-btn') as HTMLButtonElement;
+  const connectWalletConnectBtn = document.getElementById('connect-walletconnect-btn') as HTMLButtonElement;
+
+  function openConnectModal() {
+      connectModal.style.display = 'flex';
+  }
+  function closeConnectModal() {
+      connectModal.style.display = 'none';
+  }
+  connectWalletBtn.addEventListener('click', openConnectModal);
+  closeModalBtn.addEventListener('click', closeConnectModal);
+  connectModal.addEventListener('click', (e) => {
+      if (e.target === connectModal) {
+          closeConnectModal();
+      }
+  });
+
 
   function getNetworkName(chainId) {
     switch (chainId) {
@@ -331,434 +417,527 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  async function updateWalletInfo() {
-    if (!userAccount || typeof window.ethereum === 'undefined') return;
-
+  async function updateWalletInfo(connectedProvider) {
+    if (!userAccount) return;
     try {
-      const weiBalance = await window.ethereum.request({ method: 'eth_getBalance', params: [userAccount, 'latest'] });
-      const ethBalance = (parseInt(weiBalance, 16) / 1e18).toFixed(4);
-      const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-      const networkName = getNetworkName(chainId);
+        const weiBalance = await connectedProvider.request({ method: 'eth_getBalance', params: [userAccount, 'latest'] });
+        const ethBalance = (parseInt(weiBalance, 16) / 1e18).toFixed(4);
+        const chainId = await connectedProvider.request({ method: 'eth_chainId' });
+        const networkName = getNetworkName(chainId);
+        
+        document.getElementById('wallet-address').textContent = `${userAccount.slice(0, 6)}...${userAccount.slice(-4)}`;
+        document.getElementById('wallet-balance').textContent = ethBalance;
+        document.getElementById('wallet-network').textContent = networkName;
+        document.getElementById('wallet-info').style.display = 'block';
 
-      document.getElementById('wallet-address').textContent = `${userAccount.slice(0, 6)}...${userAccount.slice(-4)}`;
-      document.getElementById('wallet-balance').textContent = ethBalance;
-      document.getElementById('wallet-network').textContent = networkName;
-      document.getElementById('wallet-info').style.display = 'block';
+        connectWalletBtn.style.display = 'none';
+        disconnectWalletBtn.style.display = 'inline-block';
+        swapBtn.disabled = false;
+        aiSignalBtn.disabled = false;
+        buyLongBtn.disabled = false;
+        sellShortBtn.disabled = false;
+        logToConsole(`Wallet connected: ${userAccount}`, 'ok');
 
     } catch (error) {
         logToConsole(`Could not fetch wallet info: ${error.message}`, 'error');
+        disconnect();
     }
   }
 
+  async function onConnect(connectedProvider) {
+      provider = connectedProvider;
+      
+      // Subscribe to events
+      provider.on('accountsChanged', (accounts) => {
+          if (accounts.length > 0) {
+              userAccount = accounts[0];
+              logToConsole(`Account switched to: ${userAccount}`, 'info');
+              updateWalletInfo(provider);
+          } else {
+              disconnect();
+          }
+      });
+      provider.on('chainChanged', () => {
+          logToConsole('Network changed. Reloading wallet info.', 'info');
+          updateWalletInfo(provider);
+      });
+      provider.on('disconnect', () => {
+          disconnect();
+      });
 
-  connectWalletBtn.addEventListener('click', async () => {
+      const accounts = await provider.request({ method: 'eth_accounts' });
+      if (accounts && accounts.length > 0) {
+          userAccount = accounts[0];
+          await updateWalletInfo(provider);
+          closeConnectModal();
+      } else {
+        // For MetaMask, we might need to request accounts again if they weren't returned
+         const requestedAccounts = await provider.request({ method: 'eth_requestAccounts' });
+         if(requestedAccounts && requestedAccounts.length > 0) {
+             userAccount = requestedAccounts[0];
+             await updateWalletInfo(provider);
+             closeConnectModal();
+         } else {
+            logToConsole('No accounts found. Please ensure your wallet is unlocked and has granted permissions.', 'warn');
+         }
+      }
+  }
+
+  connectMetaMaskBtn.addEventListener('click', async () => {
     if (typeof window.ethereum === 'undefined') {
       logToConsole('MetaMask is not installed. Please install a Web3 wallet.', 'error');
       return;
     }
-
     try {
-      logToConsole('Requesting wallet connection...', 'info');
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      userAccount = accounts[0];
-      
-      await updateWalletInfo();
-      
-      connectWalletBtn.style.display = 'none';
-      disconnectWalletBtn.style.display = 'inline-block';
-      swapBtn.disabled = false;
-      aiSignalBtn.disabled = false;
-      logToConsole(`Wallet connected: ${userAccount}`, 'ok');
+        logToConsole('Requesting MetaMask connection...', 'info');
+        await onConnect(window.ethereum);
     } catch (error) {
-      logToConsole(`Wallet connection failed: ${error.message}`, 'error');
+        logToConsole(`MetaMask connection failed: ${error.message}`, 'error');
     }
   });
-
-  disconnectWalletBtn.addEventListener('click', () => {
+  
+  connectWalletConnectBtn.addEventListener('click', async () => {
+      try {
+          logToConsole('Opening WalletConnect modal...', 'info');
+          const wcProvider = await web3Modal.connect();
+          await onConnect(wcProvider);
+      } catch (error) {
+          logToConsole(`WalletConnect connection failed: ${error.message}`, 'error');
+      }
+  });
+  
+  function disconnect() {
     userAccount = null;
+    if(provider && typeof provider.disconnect === 'function') {
+      provider.disconnect();
+    }
+    provider = null;
     document.getElementById('wallet-info').style.display = 'none';
     connectWalletBtn.style.display = 'inline-block';
     disconnectWalletBtn.style.display = 'none';
     swapBtn.disabled = true;
     aiSignalBtn.disabled = true;
+    buyLongBtn.disabled = true;
+    sellShortBtn.disabled = true;
     logToConsole('Wallet disconnected.', 'info');
-  });
-  
-  if (typeof window.ethereum !== 'undefined') {
-    window.ethereum.on('accountsChanged', (accounts) => {
-      if (accounts.length > 0) {
-        if(userAccount !== accounts[0]){
-          logToConsole('Account switched. Updating info...', 'info');
-          userAccount = accounts[0];
-          updateWalletInfo();
-        }
-      } else {
-        logToConsole('Wallet disconnected by user.', 'warn');
-        disconnectWalletBtn.click();
-      }
-    });
-
-    window.ethereum.on('chainChanged', async (chainId) => {
-      if (userAccount) {
-        logToConsole(`Network changed to ${getNetworkName(chainId)}.`, 'info');
-        await updateWalletInfo();
-      }
-    });
   }
 
+  disconnectWalletBtn.addEventListener('click', disconnect);
 
-  // Fix: Cast input and select elements to their specific types.
-  const fromAmountInput = document.getElementById('from-amount') as HTMLInputElement;
-  const toAmountInput = document.getElementById('to-amount') as HTMLInputElement;
-  const fromTokenSelect = document.getElementById('from-token') as HTMLSelectElement;
-  const toTokenSelect = document.getElementById('to-token') as HTMLSelectElement;
-
-  // Add listeners to DEX token selectors to pre-fill AI prompt
-  [fromTokenSelect, toTokenSelect].forEach(select => {
-    select.addEventListener('change', (e) => {
-        const target = e.currentTarget as HTMLSelectElement;
-        const selectedOption = target.options[target.selectedIndex];
-        if (!selectedOption) return;
-
-        const optionText = selectedOption.text;
-        // Parse "Bitcoin (BTC)" into name and symbol
-        const match = optionText.match(/(.*) \((.*)\)/);
-        if (match && match.length === 3) {
-            const tokenName = match[1];
-            const tokenSymbol = match[2];
-            setAiPromptForToken(tokenName, tokenSymbol);
-        } else if (optionText === 'BITBOY (BITBOY)') {
-            // Handle custom token
-            setAiPromptForToken('BITBOY', 'BITBOY');
-        }
-    });
-  });
-
-  // Fixed rates for the custom token for simulation
-  const bitboyRates = { 'ethereum': 5000, 'usd-coin': 3.33 }; 
-
-  async function getDynamicRate(fromId, toId) {
-    if (fromId === toId) return 1;
-    if (fromId === 'BITBOY') return 1 / bitboyRates[toId];
-    if (toId === 'BITBOY') return bitboyRates[fromId];
-
-    try {
-      const response = await fetch(`${COINGECKO_API_BASE}/simple/price?ids=${fromId}&vs_currencies=${toId}`);
-      if (!response.ok) throw new Error('Failed to fetch rate from API');
-      const data = await response.json();
-      return data[fromId][toId];
-    } catch (error) {
-      logToConsole(`Could not fetch dynamic rate for ${fromId}/${toId}: ${error.message}`, 'error');
-      return 0; // Return 0 on error
-    }
-  }
-  
-  async function updateSwapAmounts() {
-    const fromId = fromTokenSelect.value;
-    const toId = toTokenSelect.value;
-    const fromAmount = parseFloat(fromAmountInput.value);
-
-    if (!fromId || !toId || !fromAmount || fromAmount <= 0) {
-      toAmountInput.value = '';
-      return;
-    }
-
-    const rate = await getDynamicRate(fromId, toId);
-    if (rate) {
-      toAmountInput.value = (fromAmount * rate).toFixed(6);
-    } else {
-      toAmountInput.value = 'Rate unavailable';
-    }
-  }
-
-  [fromAmountInput, fromTokenSelect, toTokenSelect].forEach(el => {
-    el.addEventListener('input', updateSwapAmounts);
-    // Note: The 'change' event listener for AI prompts is separate and doesn't interfere
-  });
-
-  swapBtn.addEventListener('click', () => {
-    const fromToken = fromTokenSelect.options[fromTokenSelect.selectedIndex].text;
-    const toToken = toTokenSelect.options[toTokenSelect.selectedIndex].text;
-    const fromAmount = fromAmountInput.value;
-    const toAmount = toAmountInput.value;
-
-    if (!fromAmount || parseFloat(fromAmount) <= 0) {
-        logToConsole('Invalid amount for swap.', 'warn');
-        return;
-    }
-
-    logToConsole(`Initiating swap of ${fromAmount} ${fromToken} for ${toAmount} ${toToken}...`, 'info');
-    swapBtn.disabled = true;
-    swapBtn.textContent = 'Submitting...';
-
-    // Realistic transaction simulation
-    setTimeout(() => {
-        logToConsole('Transaction submitted. Waiting for confirmation...', 'info');
-        swapBtn.textContent = 'Confirming (0/3)...';
-        let confirmations = 0;
-        const interval = setInterval(() => {
-            confirmations++;
-            swapBtn.textContent = `Confirming (${confirmations}/3)...`;
-            logToConsole(`Block confirmation ${confirmations}/3...`, 'info');
-            if (confirmations >= 3) {
-                clearInterval(interval);
-                const txHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
-                logToConsole(`Swap successful! TxHash: ${txHash}`, 'ok');
-                swapBtn.disabled = false;
-                swapBtn.textContent = 'Swap';
-                fromAmountInput.value = '';
-                toAmountInput.value = '';
-                updateWalletInfo(); // Refresh balance
-            }
-        }, 2500);
-    }, 1500);
-  });
-  
   aiSignalBtn.addEventListener('click', async () => {
-      const fromToken = fromTokenSelect.options[fromTokenSelect.selectedIndex].text;
-      const toToken = toTokenSelect.options[toTokenSelect.selectedIndex].text;
-      const fromId = fromTokenSelect.value;
-      const toId = toTokenSelect.value;
+    const fromTokenSelect = document.getElementById('from-token') as HTMLSelectElement;
+    const toTokenSelect = document.getElementById('to-token') as HTMLSelectElement;
 
-      logToConsole(`Requesting AI trade signal for ${fromToken} -> ${toToken}...`, 'info');
+    const fromTokenId = fromTokenSelect.value;
+    const toTokenId = toTokenSelect.value;
+    
+    const fromTokenText = fromTokenSelect.selectedOptions[0].text;
+    const toTokenText = toTokenSelect.selectedOptions[0].text;
 
-      const rate = await getDynamicRate(fromId, toId);
-      
-      let prompt;
+    const parseTokenText = (text: string) => {
+        const match = text.match(/(.+) \((.+)\)/);
+        if (match) {
+            return { name: match[1].trim(), symbol: match[2].trim() };
+        }
+        const parts = text.split('(');
+        const name = parts[0].trim();
+        return { name: name, symbol: name.toUpperCase() };
+    };
 
-      if (rate && rate > 0) {
-        logToConsole(`Current rate: 1 ${fromToken.split(' ')[0]} ≈ ${rate.toFixed(6)} ${toToken.split(' ')[0]}`, 'info');
-        prompt = `Provide a brief, speculative trade signal analysis for swapping ${fromToken} for ${toToken} right now. The current approximate market price ratio is 1 ${fromToken.split(' ')[0]} = ${rate.toFixed(6)} ${toToken.split(' ')[0]}. Based on this rate and overall market sentiment, is this a favorable trade? Be concise.`;
-      } else {
-        logToConsole('Could not fetch market rate. AI will provide a general analysis.', 'warn');
-        prompt = `Provide a brief, speculative trade signal analysis for swapping ${fromToken} for ${toToken} right now. The specific market rate could not be fetched. Consider general market conditions. Be concise.`;
-      }
-      
-      queryAiCore(prompt);
-  });
-
-  // ===============================================
-  // CRYPTOGRAPHIC OPERATIONS
-  // ===============================================
-  // Fix: Cast elements to their specific types.
-  const hashInput = document.getElementById('hash-input') as HTMLInputElement;
-  const hashBtn = document.getElementById('hash-btn') as HTMLButtonElement;
-  const hashOutput = document.getElementById('hash-output') as HTMLElement;
-
-  hashBtn.addEventListener('click', async () => {
-    const text = hashInput.value;
-    if (!text) {
-        logToConsole('Hash input is empty.', 'warn');
+    const fromToken = parseTokenText(fromTokenText);
+    const toToken = parseTokenText(toTokenText);
+    
+    if (fromTokenId.toUpperCase() === 'BITBOY' || toTokenId.toUpperCase() === 'BITBOY') {
+        logToConsole('AI trade signals are not available for custom tokens like BITBOY.', 'warn');
         return;
     }
-    try {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(text);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        hashOutput.textContent = hashHex;
-        hashOutput.style.display = 'block';
-        logToConsole('SHA-256 hash generated.', 'ok');
-    } catch (error) {
-        logToConsole(`Hashing failed: ${error.message}`, 'error');
+
+    if (fromTokenId === toTokenId) {
+        logToConsole('Cannot generate a signal for the same token pair.', 'warn');
+        return;
     }
+
+    logToConsole(`Generating AI trade signal for ${fromToken.symbol}/${toToken.symbol}...`, 'info');
+
+    async function getTokenMarketData(tokenId: string, tokenName: string) {
+        try {
+            const [priceResponse, chartResponse] = await Promise.all([
+                fetch(`${COINGECKO_API_BASE}/simple/price?ids=${tokenId}&vs_currencies=usd&include_24hr_change=true`),
+                fetch(`${COINGECKO_API_BASE}/coins/${tokenId}/market_chart?vs_currency=usd&days=7&interval=daily`)
+            ]);
+
+            if (!priceResponse.ok) throw new Error(`Price fetch for ${tokenName} failed: ${priceResponse.statusText}`);
+            if (!chartResponse.ok) throw new Error(`Chart fetch for ${tokenName} failed: ${chartResponse.statusText}`);
+            
+            const priceData = await priceResponse.json();
+            const chartData = await chartResponse.json();
+
+            const currentPriceData = priceData[tokenId];
+            const prices = chartData.prices;
+
+            if (currentPriceData && currentPriceData.usd !== undefined && prices) {
+                const price = currentPriceData.usd;
+                const change = currentPriceData.usd_24h_change || 0;
+                let trendText = "unavailable";
+
+                if (prices.length > 1) {
+                    const startPrice = prices[0][1];
+                    const endPrice = price;
+                    const sevenDayChange = ((endPrice - startPrice) / startPrice) * 100;
+                    trendText = `${sevenDayChange.toFixed(2)}%`;
+                }
+                const priceString = price.toString();
+                const decimalPlaces = (priceString.split('.')[1] || '').length;
+                return {
+                    price: price.toFixed(Math.max(2, decimalPlaces)),
+                    change: change.toFixed(2),
+                    trend: trendText
+                };
+            }
+            return null;
+        } catch (error) {
+            logToConsole(`Failed to fetch market data for ${tokenName}: ${error.message}`, 'error');
+            return null;
+        }
+    }
+    
+    const [fromData, toData] = await Promise.all([
+        getTokenMarketData(fromTokenId, fromToken.name),
+        getTokenMarketData(toTokenId, toToken.name)
+    ]);
+
+    if (!fromData || !toData) {
+        logToConsole('Could not fetch all necessary market data to generate a signal.', 'error');
+        return;
+    }
+    const prompt = `
+As a professional crypto trading analyst, provide a concise and actionable trade signal for the ${fromToken.symbol}/${toToken.symbol} pair.
+Do not provide a lengthy explanation, just the signal.
+
+Current Market Data:
+- ${fromToken.symbol}: Price: $${fromData.price} USD, 24h Change: ${fromData.change}%, 7-day Trend: ${fromData.trend}.
+- ${toToken.symbol}: Price: $${toData.price} USD, 24h Change: ${toData.change}%, 7-day Trend: ${toData.trend}.
+
+Based on this data, provide a clear signal including:
+1. Action: (e.g., BUY, SELL, HOLD, SHORT)
+2. Rationale: (A brief explanation for the action based on the data provided)
+3. Entry Price: (A suggested price to enter the trade)
+4. Target Price: (A potential take-profit level)
+5. Stop-Loss: (A price to exit if the trade goes against you)
+6. Confidence: (e.g., High, Medium, Low)
+    `;
+
+    await queryAiCore(prompt);
   });
 
-  // Fix: Cast elements to their specific types.
-  const aesInput = document.getElementById('aes-input') as HTMLInputElement;
-  const aesPassword = document.getElementById('aes-password') as HTMLInputElement;
-  const aesEncryptBtn = document.getElementById('aes-encrypt-btn') as HTMLButtonElement;
-  const aesDecryptBtn = document.getElementById('aes-decrypt-btn') as HTMLButtonElement;
-  const aesOutput = document.getElementById('aes-output') as HTMLElement;
+  // Leveraged Trading Logic
+  leverageSlider.addEventListener('input', (e) => {
+    leverageValue.textContent = `${(e.target as HTMLInputElement).value}x`;
+  });
 
-  async function getAesKey(password, salt) {
-      const enc = new TextEncoder();
-      const keyMaterial = await crypto.subtle.importKey(
-          'raw',
-          enc.encode(password),
-          { name: 'PBKDF2' },
-          false,
-          ['deriveKey']
-      );
-      return crypto.subtle.deriveKey(
-          { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
-          keyMaterial,
-          { name: 'AES-GCM', length: 256 },
-          true,
-          ['encrypt', 'decrypt']
-      );
+  function executeTrade(direction) {
+    const fromTokenSelect = document.getElementById('from-token') as HTMLSelectElement;
+    const toTokenSelect = document.getElementById('to-token') as HTMLSelectElement;
+    const timeframeSelect = document.getElementById('leverage-timeframe') as HTMLSelectElement;
+
+    const fromSymbol = fromTokenSelect.selectedOptions[0].text.match(/\(([^)]+)\)/)[1];
+    const toSymbol = toTokenSelect.selectedOptions[0].text.match(/\(([^)]+)\)/)[1];
+    const leverage = leverageSlider.value;
+    const timeframe = timeframeSelect.selectedOptions[0].text;
+    
+    if (fromSymbol === toSymbol) {
+        logToConsole('Cannot trade a token against itself.', 'warn');
+        return;
+    }
+
+    const logType = direction === 'BUY' ? 'ok' : 'error';
+    const action = direction === 'BUY' ? 'BUY / LONG' : 'SELL / SHORT';
+
+    logToConsole(`Executing ${action} on ${fromSymbol}/${toSymbol} with ${leverage}x leverage on the ${timeframe} timeframe.`, logType);
   }
 
-  aesEncryptBtn.addEventListener('click', async () => {
-    const plaintext = aesInput.value;
-    const password = aesPassword.value;
-    if (!plaintext || !password) {
-        logToConsole('AES Encryption: Plaintext and password are required.', 'warn');
-        return;
-    }
-    try {
-        const salt = crypto.getRandomValues(new Uint8Array(16));
-        const iv = crypto.getRandomValues(new Uint8Array(12));
-        const key = await getAesKey(password, salt);
-        const encrypted = await crypto.subtle.encrypt(
-            { name: 'AES-GCM', iv },
-            key,
-            new TextEncoder().encode(plaintext)
-        );
-        const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
-        combined.set(salt);
-        combined.set(iv, salt.length);
-        combined.set(new Uint8Array(encrypted), salt.length + iv.length);
-        
-        const base64String = btoa(String.fromCharCode.apply(null, combined));
-        aesOutput.textContent = base64String;
-        aesOutput.style.display = 'block';
-        logToConsole('AES-GCM encryption successful.', 'ok');
-    } catch (error) {
-        logToConsole(`AES encryption failed: ${error.message}`, 'error');
-    }
-  });
-
-  aesDecryptBtn.addEventListener('click', async () => {
-    const ciphertextB64 = aesInput.value;
-    const password = aesPassword.value;
-    if (!ciphertextB64 || !password) {
-        logToConsole('AES Decryption: Ciphertext and password are required.', 'warn');
-        return;
-    }
-    try {
-        const combined = new Uint8Array(atob(ciphertextB64).split('').map(c => c.charCodeAt(0)));
-        const salt = combined.slice(0, 16);
-        const iv = combined.slice(16, 28);
-        const ciphertext = combined.slice(28);
-
-        const key = await getAesKey(password, salt);
-        const decrypted = await crypto.subtle.decrypt(
-            { name: 'AES-GCM', iv },
-            key,
-            ciphertext
-        );
-        const plaintext = new TextDecoder().decode(decrypted);
-        aesOutput.textContent = `DECRYPTED: ${plaintext}`;
-        aesOutput.style.display = 'block';
-        logToConsole('AES-GCM decryption successful.', 'ok');
-    } catch (error) {
-        logToConsole(`AES decryption failed: ${error.message}. Check password or ciphertext.`, 'error');
-    }
-  });
-
-
-  // ===============================================
-  // SYSTEM TAB
-  // ===============================================
-  // Fix: Cast elements to their specific types.
-  const checkApiBtn = document.getElementById('check-api-btn') as HTMLButtonElement;
-  const apiStatus = document.getElementById('api-status') as HTMLElement;
-  const clearDataBtn = document.getElementById('clear-data-btn') as HTMLButtonElement;
+  buyLongBtn.addEventListener('click', () => executeTrade('BUY'));
+  sellShortBtn.addEventListener('click', () => executeTrade('SELL'));
   
-  checkApiBtn.addEventListener('click', async () => {
-    apiStatus.textContent = 'Pinging...';
-    try {
-        const response = await fetch(`${COINGECKO_API_BASE}/ping`);
-        if (!response.ok) throw new Error(`HTTP Status ${response.status}`);
-        const data = await response.json();
-        if (data.gecko_says) {
-             apiStatus.textContent = 'Status: OK';
-             apiStatus.style.color = 'var(--color-neon-green)';
-             logToConsole('CoinGecko API status: OK', 'ok');
-        }
-    } catch (error) {
-        apiStatus.textContent = `Status: Error - ${error.message}`;
-        apiStatus.style.color = 'var(--color-neon-red)';
-        logToConsole(`CoinGecko API status check failed: ${error.message}`, 'error');
-    }
-  });
+    // ===============================================
+  // SEED PHRASE TOOL
+  // ===============================================
+  const seedPhraseInput = document.getElementById('seed-phrase-input') as HTMLTextAreaElement;
+  const analyzeSeedBtn = document.getElementById('analyze-seed-btn') as HTMLButtonElement;
+  const seedAnalysisOutput = document.getElementById('seed-analysis-output') as HTMLElement;
 
-  clearDataBtn.addEventListener('click', () => {
-    if (confirm('Are you sure you want to delete all recurring tasks? This cannot be undone.')) {
-        localStorage.removeItem(RECURRING_TASKS_KEY);
-        recurringTasks = [];
-        renderRecurringTasks();
-        logToConsole('All local data has been cleared.', 'warn');
-    }
-  });
+  function entropyToBinary(hex) {
+      return hex.split('').map(i =>
+          parseInt(i, 16).toString(2).padStart(4, '0')
+      ).join('');
+  }
 
+  analyzeSeedBtn.addEventListener('click', () => {
+      const mnemonic = seedPhraseInput.value.trim().toLowerCase();
+      seedAnalysisOutput.style.display = 'none';
+      seedAnalysisOutput.innerHTML = '';
+
+      if (!mnemonic) {
+          logToConsole('Seed phrase input cannot be empty.', 'warn');
+          return;
+      }
+
+      const words = mnemonic.split(/\s+/);
+      const wordCount = words.length;
+
+      if (![12, 15, 18, 21, 24].includes(wordCount)) {
+          logToConsole(`Invalid word count: ${wordCount}. Must be 12, 15, 18, 21, or 24.`, 'error');
+          return;
+      }
+      
+      const isValid = bip39.validateMnemonic(mnemonic);
+      
+      const entropyHex = isValid ? bip39.mnemonicToEntropy(mnemonic) : 'N/A';
+      const entropyBits = (wordCount / 3) * 32;
+      const checksumBits = wordCount / 3;
+
+      let mainEntropyBinary = 'N/A';
+      let checksumBinary = 'N/A';
+      
+      if(isValid) {
+          const fullBinary = entropyToBinary(bip39.mnemonicToEntropy(mnemonic));
+          mainEntropyBinary = fullBinary.slice(0, entropyBits);
+          checksumBinary = fullBinary.slice(entropyBits);
+      }
+      
+
+      const results = [
+          { label: 'Status', value: isValid ? 'Valid' : 'Invalid', className: isValid ? 'valid' : 'invalid' },
+          { label: 'Word Count', value: wordCount, className: '' },
+          { label: 'Language', value: 'English', className: '' }, // Assuming English wordlist from library
+          { label: 'Entropy', value: `${entropyBits} bits`, className: '' },
+          { label: 'Checksum', value: `${checksumBits} bits`, className: '' },
+          { label: 'Entropy (Hex)', value: entropyHex, className: 'mono small' },
+          { label: 'Entropy (Binary)', value: mainEntropyBinary, className: 'mono small' },
+          { label: 'Checksum (Binary)', value: checksumBinary, className: 'mono small' },
+      ];
+
+      results.forEach(result => {
+          const row = document.createElement('div');
+          row.className = 'result-row';
+          row.innerHTML = `
+              <span class="result-label mono">${result.label}</span>
+              <span class="result-value ${result.className}">${result.value}</span>
+          `;
+          seedAnalysisOutput.appendChild(row);
+      });
+      
+      seedAnalysisOutput.style.display = 'flex';
+      logToConsole('Seed phrase analysis complete.', 'ok');
+  });
 
   // ===============================================
   // RECURRING TASKS
   // ===============================================
-  // Fix: Cast elements to their specific types.
   const taskForm = document.getElementById('recurring-task-form') as HTMLFormElement;
   const taskInput = document.getElementById('recurring-task-input') as HTMLInputElement;
   const taskSelect = document.getElementById('recurring-task-select') as HTMLSelectElement;
   const taskList = document.getElementById('recurring-task-list') as HTMLElement;
   let recurringTasks = [];
 
-  function saveRecurringTasks() {
-      localStorage.setItem(RECURRING_TASKS_KEY, JSON.stringify(recurringTasks));
+  function saveTasks() {
+    try {
+        localStorage.setItem(RECURRING_TASKS_KEY, JSON.stringify(recurringTasks));
+    } catch(e) {
+        logToConsole('Could not save tasks to local storage. It may be full or disabled.', 'error');
+    }
   }
 
-  function renderRecurringTasks() {
-      taskList.innerHTML = '';
-      if (recurringTasks.length === 0) {
-          taskList.innerHTML = '<p class="small">No recurring tasks yet.</p>';
-          return;
-      }
-      recurringTasks.forEach((task, index) => {
-          const taskEl = document.createElement('div');
-          taskEl.className = 'dex-pair'; // Re-using style for consistency
-          taskEl.innerHTML = `
-              <div class="row">
-                  <span class="tag mono">${task.frequency}</span>
-                  <span>${task.text}</span>
-              </div>
-              <button class="delete-task-btn" data-index="${index}">&times;</button>
-          `;
-          taskList.appendChild(taskEl);
-      });
+  function renderTasks() {
+    taskList.innerHTML = '';
+    if (recurringTasks.length === 0) {
+        taskList.innerHTML = '<p class="small">No recurring tasks added yet.</p>';
+        return;
+    }
+    recurringTasks.forEach((task, index) => {
+      const taskEl = document.createElement('div');
+      taskEl.className = 'row';
+      taskEl.style.justifyContent = 'space-between';
+      taskEl.innerHTML = `
+        <span class="mono">${task.text}</span>
+        <div class="row">
+          <span class="tag">${task.frequency}</span>
+          <button data-index="${index}" class="delete-task-btn" style="background:rgba(255,51,0,0.2);color:#ff3300;padding:4px 8px;font-size:.8em;">X</button>
+        </div>
+      `;
+      taskList.appendChild(taskEl);
+    });
   }
-  
-  // Fix: Cast e.target to HTMLElement to access its properties.
-  taskList.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement;
-      if (target.classList.contains('delete-task-btn')) {
-          const index = parseInt(target.dataset.index, 10);
-          recurringTasks.splice(index, 1);
-          saveRecurringTasks();
-          renderRecurringTasks();
-          logToConsole('Recurring task removed.', 'info');
-      }
-  });
 
   taskForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const text = taskInput.value.trim();
-      const frequency = taskSelect.value;
-      if (text) {
-          recurringTasks.push({ text, frequency });
-          saveRecurringTasks();
-          renderRecurringTasks();
-          taskInput.value = '';
-          logToConsole('New recurring task added.', 'ok');
-      }
+    e.preventDefault();
+    const taskText = taskInput.value.trim();
+    if (taskText) {
+      recurringTasks.push({ text: taskText, frequency: taskSelect.value });
+      saveTasks();
+      renderTasks();
+      taskInput.value = '';
+      logToConsole('Recurring task added.', 'ok');
+    }
   });
 
-  function loadRecurringTasks() {
-      const storedTasks = localStorage.getItem(RECURRING_TASKS_KEY);
-      if (storedTasks) {
+  taskList.addEventListener('click', (e) => {
+    // Fix: Cast e.target to HTMLElement to access properties like 'dataset'.
+    const target = e.target as HTMLElement;
+    if (target.classList.contains('delete-task-btn')) {
+      const index = parseInt(target.dataset.index, 10);
+      recurringTasks.splice(index, 1);
+      saveTasks();
+      renderTasks();
+      logToConsole('Recurring task removed.', 'info');
+    }
+  });
+
+  function loadTasks() {
+    try {
+        const storedTasks = localStorage.getItem(RECURRING_TASKS_KEY);
+        if (storedTasks) {
           recurringTasks = JSON.parse(storedTasks);
-      }
-      renderRecurringTasks();
+          renderTasks();
+          logToConsole('Loaded recurring tasks from local storage.', 'ok');
+        } else {
+            renderTasks(); // Render empty state
+        }
+    } catch (e) {
+        logToConsole('Could not load tasks from local storage. Data may be corrupted.', 'error');
+        recurringTasks = [];
+        renderTasks();
+    }
   }
+
+
+  // ===============================================
+  // CRYPTO & SYSTEM OPERATIONS
+  // ===============================================
+  // Hashing
+  document.getElementById('hash-btn').addEventListener('click', async () => {
+    const input = (document.getElementById('hash-input') as HTMLTextAreaElement).value;
+    const outputEl = document.getElementById('hash-output');
+    if (!input) {
+      logToConsole('Hashing input cannot be empty.', 'warn');
+      return;
+    }
+    try {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(input);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      outputEl.textContent = hashHex;
+      outputEl.style.display = 'block';
+      logToConsole('SHA-256 hash generated.', 'ok');
+    } catch (error) {
+      logToConsole(`Hashing failed: ${error.message}`, 'error');
+    }
+  });
+
+  // AES Encryption/Decryption
+  async function aesAction(action) {
+    const input = (document.getElementById('aes-input') as HTMLTextAreaElement).value;
+    const password = (document.getElementById('aes-password') as HTMLInputElement).value;
+    const outputEl = document.getElementById('aes-output');
+
+    if (!input || !password) {
+      logToConsole('AES input and password cannot be empty.', 'warn');
+      return;
+    }
+    try {
+      const salt = new TextEncoder().encode('some-static-salt-for-derivation'); // In a real app, salt should be random and stored
+      const keyMaterial = await crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(password),
+        { name: 'PBKDF2' },
+        false,
+        ['deriveKey']
+      );
+      const key = await crypto.subtle.deriveKey(
+        { "name": 'PBKDF2', salt, "iterations": 100000, "hash": 'SHA-256' },
+        keyMaterial,
+        { "name": 'AES-GCM', "length": 256 },
+        true,
+        ['encrypt', 'decrypt']
+      );
+
+      if (action === 'encrypt') {
+        const iv = crypto.getRandomValues(new Uint8Array(12)); // IV for GCM
+        const encodedData = new TextEncoder().encode(input);
+        const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encodedData);
+        
+        // Combine IV and ciphertext for storage/transmission
+        const combined = new Uint8Array(iv.length + encrypted.byteLength);
+        combined.set(iv, 0);
+        combined.set(new Uint8Array(encrypted), iv.length);
+
+        // Convert to Base64 to make it readable
+        const base64String = btoa(String.fromCharCode.apply(null, combined));
+        outputEl.textContent = base64String;
+        logToConsole('AES encryption successful.', 'ok');
+      } else { // Decrypt
+        const combined = new Uint8Array(atob(input).split('').map(c => c.charCodeAt(0)));
+        const iv = combined.slice(0, 12);
+        const ciphertext = combined.slice(12);
+
+        const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+        const decryptedText = new TextDecoder().decode(decrypted);
+        outputEl.textContent = decryptedText;
+        logToConsole('AES decryption successful.', 'ok');
+      }
+      outputEl.style.display = 'block';
+    } catch (error) {
+       outputEl.textContent = `Error: ${error.message}. If decrypting, check password and ciphertext.`;
+       outputEl.style.display = 'block';
+       logToConsole(`AES ${action} failed: ${error.message}`, 'error');
+    }
+  }
+  document.getElementById('aes-encrypt-btn').addEventListener('click', () => aesAction('encrypt'));
+  document.getElementById('aes-decrypt-btn').addEventListener('click', () => aesAction('decrypt'));
+
+
+  // API Check
+  document.getElementById('check-api-btn').addEventListener('click', async () => {
+    const statusEl = document.getElementById('api-status');
+    statusEl.textContent = 'Pinging...';
+    try {
+        const response = await fetch(`${COINGECKO_API_BASE}/ping`);
+        if(response.ok) {
+            statusEl.textContent = 'CoinGecko API Status: OK';
+            logToConsole('CoinGecko API is responsive.', 'ok');
+        } else {
+            throw new Error(`Status: ${response.status}`);
+        }
+    } catch (error) {
+        statusEl.textContent = `CoinGecko API Status: Error (${error.message})`;
+        logToConsole(`CoinGecko API ping failed: ${error.message}`, 'error');
+    }
+  });
+  
+  // Clear Data
+  document.getElementById('clear-data-btn').addEventListener('click', () => {
+    if (confirm('Are you sure you want to clear all local data? This cannot be undone.')) {
+        localStorage.removeItem(RECURRING_TASKS_KEY);
+        recurringTasks = [];
+        renderTasks();
+        logToConsole('All local data has been cleared.', 'warn');
+    }
+  });
+
 
   // ===============================================
   // INITIALIZATION
   // ===============================================
-  logToConsole('UI Initialized. Welcome to BITBOY AI::DEX.', 'ok');
-  fetchCoinGeckoTrending();
-  populateTokenSelects();
-  loadRecurringTasks();
-  updateTradingViewWidget(); // Load default chart
+  function init() {
+    logToConsole('Initializing AI Unified Tool v2.0.0...', 'info');
+    updateTradingViewWidget();
+    fetchCoinGeckoTrending();
+    populateTokenSelects();
+    loadTasks();
+    logToConsole('Initialization complete. Welcome!', 'ok');
+  }
 
+  init();
 });

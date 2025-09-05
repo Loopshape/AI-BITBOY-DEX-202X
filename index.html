@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI Unified Tool v2.0.0 — Neon GUI (Single File)</title>
+<meta name="viewport" content="width=device-width, initial-sc GUI (Single File)</title>
 <link rel="stylesheet" href="index.css">
 </head>
 
@@ -12,8 +11,8 @@
   <canvas class="fullscreen-adapter" id="vanta-canvas"></canvas>
 
   <div class="content">
-    <h1>AI Unified Tool v2.0.0</h1>
-    <p class="small" style="margin-top:4px; margin-bottom:20px;">Neon GUI with Gemini Integration</p>
+    <h1>NEMODIAN COREMOVEMENT 202X</h1>
+    <p class="small" style="margin-top:4px; margin-bottom:20px;">AI STRATEGY-NFT:AGENT Integration</p>
 
     <div class="card" style="margin-bottom: 16px; padding: 8px;">
         <div id="tradingview-widget-container"></div>
@@ -32,6 +31,7 @@
           <div class="tabs">
             <button class="tab-button active" data-tab="dex-tab-swap">BITBOY AI-DEX</button>
             <button class="tab-button" data-tab="dex-tab-crypto">Cryptographic Operations</button>
+            <button class="tab-button" data-tab="dex-tab-seed">Seed Tool</button>
             <button class="tab-button" data-tab="dex-tab-system">System</button>
           </div>
 
@@ -65,6 +65,46 @@
                   <button id="swap-btn" disabled>Swap</button>
                   <button id="ai-signal-btn" disabled>Get AI Trade Signal</button>
               </div>
+              <hr class="sep">
+              <div class="stack" style="gap: 16px;">
+                  <h4>Leveraged Futures</h4>
+                  <div class="row" style="gap: 20px;">
+                      <div class="stack" style="flex: 1;">
+                          <label for="leverage-timeframe" class="small">Timeframe</label>
+                          <select id="leverage-timeframe">
+                              <option value="1min">1 Minute</option>
+                              <option value="5min">5 Minutes</option>
+                              <option value="10min">10 Minutes</option>
+                              <option value="15min">15 Minutes</option>
+                              <option value="30min">30 Minutes</option>
+                              <option value="45min">45 Minutes</option>
+                              <option value="1h">1 Hour</option>
+                              <option value="2h">2 Hours</option>
+                              <option value="8h">8 Hours</option>
+                              <option value="12h">12 hours</option>
+                              <option value="1d">1 Day</option>
+                              <option value="1w">1 Week</option>
+                              <option value="2w">2 Weeks</option>
+                              <option value="1m">1 Month</option>
+                              <option value="2m">2 Months</option>
+                              <option value="3m">3 Months</option>
+                              <option value="4m">4 Months</option>
+                              <option value="6m">6 Months</option>
+                              <option value="1y">1 Year</option>
+                              <option value="5y">5 Years</option>
+                              <option value="10y">10 Years</option>
+                          </select>
+                      </div>
+                      <div class="stack" style="flex: 2;">
+                          <label for="leverage-slider" class="small">Leverage: <span id="leverage-value" class="mono">2x</span></label>
+                          <input type="range" id="leverage-slider" min="1" max="100" value="2">
+                      </div>
+                  </div>
+                  <div class="trade-btn-container">
+                      <button id="buy-long-btn" class="trade-btn buy-btn" disabled>BUY / LONG</button>
+                      <button id="sell-short-btn" class="trade-btn sell-btn" disabled>SELL / SHORT</button>
+                  </div>
+              </div>
             </div>
           </div>
 
@@ -92,6 +132,24 @@
                    <pre id="aes-output" class="mono" style="display:none;"></pre>
                 </div>
               </div>
+            </div>
+          </div>
+          
+          <!-- SEED TOOL TAB -->
+          <div id="dex-tab-seed" class="tab-content">
+            <div class="stack" style="gap: 20px;">
+                <div class="warning-box">
+                    <h4><span class="mono">[ SECURITY WARNING ]</span></h4>
+                    <p class="small">NEVER enter a seed phrase from a wallet containing real funds into any online tool, including this one. This tool is for educational purposes only. It operates entirely offline within your browser and does not send your seed phrase anywhere. For maximum security, use it on an air-gapped computer.</p>
+                </div>
+                <div>
+                    <h4>BIP39 Mnemonic Seed Parser</h4>
+                    <div class="stack">
+                        <textarea id="seed-phrase-input" rows="4" placeholder="Enter 12, 15, 18, 21, or 24 word mnemonic phrase here..."></textarea>
+                        <button id="analyze-seed-btn">Analyze Seed</button>
+                        <div id="seed-analysis-output" class="stack" style="display:none; gap: 8px; margin-top: 10px;"></div>
+                    </div>
+                </div>
             </div>
           </div>
 
@@ -162,6 +220,21 @@
   </div>
 </div>
 
+<!-- Connection Modal -->
+<div id="connect-modal" class="modal-overlay" style="display: none;">
+  <div class="modal-content card">
+    <h3>Connect Wallet</h3>
+    <p class="small">Choose your connection method.</p>
+    <hr class="sep">
+    <div class="stack">
+        <button id="connect-metamask-btn" class="modal-button">MetaMask / Browser Wallet</button>
+        <button id="connect-walletconnect-btn" class="modal-button button-secondary">WalletConnect</button>
+    </div>
+    <button id="close-modal-btn" class="modal-close-btn">X</button>
+  </div>
+</div>
+
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"></script>
 
@@ -169,7 +242,9 @@
 <script type="importmap">
 {
   "imports": {
-    "@google/genai": "https://esm.run/@google/genai"
+    "@google/genai": "https://esm.run/@google/genai",
+    "bip39": "https://esm.run/bip39",
+    "@web3modal/standalone": "https://esm.run/@web3modal/standalone"
   }
 }
 </script>

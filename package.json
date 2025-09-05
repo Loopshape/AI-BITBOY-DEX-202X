@@ -9,7 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/genai": "latest"
+    "@google/genai": "latest",
+    "bip39": "latest",
+    "@web3modal/standalone": "latest"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
