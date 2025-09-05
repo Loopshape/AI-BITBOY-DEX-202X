@@ -237,23 +237,36 @@
           <!-- SYSTEM TAB -->
           <div id="dex-tab-system" class="tab-content">
              <div class="stack" style="gap: 20px;">
-              <div>
-                <h4>API Status</h4>
-                <div class="stack">
-                  <div class="row">
-                     <button id="check-api-btn">Check CoinGecko API</button>
-                     <p id="api-status" class="small mono"></p>
+                <div>
+                  <h4>Local AI Settings</h4>
+                  <div class="stack" style="gap: 12px;">
+                      <div class="stack" style="gap: 4px;">
+                          <label for="ollama-api-url" class="small mono">Ollama API Endpoint</label>
+                          <input type="text" id="ollama-api-url">
+                      </div>
+                      <div class="stack" style="gap: 4px;">
+                          <label for="ollama-model-name" class="small mono">Model Name</label>
+                          <input type="text" id="ollama-model-name" placeholder="e.g., llama3, codellama">
+                      </div>
+                      <button id="save-settings-btn" style="align-self: flex-start;">Save Settings</button>
                   </div>
                 </div>
-              </div>
-              <hr class="sep">
-              <div>
-                <h4>Data Management</h4>
-                <div class="stack">
-                    <button id="clear-data-btn" style="background: rgba(255,51,0,0.2); color:#ff3300; box-shadow:0 0 6px #ff3300;">Clear All Local Data</button>
-                    <p class="small">This will delete all saved recurring tasks and Kanban board data. This action cannot be undone.</p>
+                <hr class="sep">
+                <div>
+                    <h4>API Status</h4>
+                    <div class="row">
+                       <button id="check-api-btn">Check CoinGecko API</button>
+                       <p id="api-status" class="small mono"></p>
+                    </div>
                 </div>
-              </div>
+                <hr class="sep">
+                <div>
+                  <h4>Data Management</h4>
+                  <div class="stack">
+                      <button id="clear-data-btn" style="background: rgba(255,51,0,0.2); color:#ff3300; box-shadow:0 0 6px #ff3300;">Clear All Local Data</button>
+                      <p class="small">This will delete all saved recurring tasks and Kanban board data. This action cannot be undone.</p>
+                  </div>
+                </div>
             </div>
           </div>
         </div>
@@ -281,7 +294,7 @@
         <div class="card">
           <h3>AI Analyst Core</h3>
           <div class="stack">
-            <p class="small">Enter a prompt to get analysis from the Gemini model.</p>
+            <p class="small">Enter a prompt to get analysis from your local Ollama model.</p>
             <textarea id="ollama-prompt" rows="4" placeholder="e.g., What is the market sentiment for Bitcoin?"></textarea>
             <button id="ollama-submit">Query AI Core</button>
             <button id="suggest-prompts-btn" class="button-secondary">Suggest Prompts</button>
@@ -322,7 +335,6 @@
 <script type="importmap">
 {
   "imports": {
-    "@google/genai": "https://esm.run/@google/genai",
     "bip39": "https://esm.run/bip39",
     "@web3modal/standalone": "https://esm.run/@web3modal/standalone"
   }

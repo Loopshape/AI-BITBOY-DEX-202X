@@ -1,5 +1,4 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
 import * as bip39 from 'bip39';
 import { Web3Modal } from '@web3modal/standalone';
 
@@ -165,14 +164,64 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ===============================================
-  // GEMINI AI CORE
+  // OLLAMA AI CORE
   // ===============================================
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  // Fix: Cast elements to their specific types to access properties like 'value' and 'disabled'.
   const aiPromptInput = document.getElementById('ollama-prompt') as HTMLInputElement;
   const aiSubmitBtn = document.getElementById('ollama-submit') as HTMLButtonElement;
   const suggestPromptsBtn = document.getElementById('suggest-prompts-btn') as HTMLButtonElement;
   const promptSuggestionsContainer = document.getElementById('prompt-suggestions') as HTMLElement;
+
+  let aiSettings = {
+    apiUrl: 'http://localhost:11434',
+    model: 'llama3'
+  };
+  const SETTINGS_COOKIE_KEY = "-1";
+
+  function saveSettingsToCookie() {
+      try {
+          document.cookie = `${SETTINGS_COOKIE_KEY}=${encodeURIComponent(JSON.stringify(aiSettings))};path=/;max-age=31536000`; // Expires in 1 year
+          logToConsole('AI settings saved.', 'ok');
+      } catch (e) {
+          logToConsole(`Failed to save settings: ${e.message}`, 'error');
+      }
+  }
+  
+  function loadSettingsFromCookie() {
+      const apiUrlInput = document.getElementById('ollama-api-url') as HTMLInputElement;
+      const modelNameInput = document.getElementById('ollama-model-name') as HTMLInputElement;
+      
+      try {
+          const cookieValue = document.cookie
+              .split('; ')
+              .find(row => row.startsWith(`${SETTINGS_COOKIE_KEY}=`))
+              ?.split('=')[1];
+
+          if (cookieValue) {
+              aiSettings = JSON.parse(decodeURIComponent(cookieValue));
+              logToConsole('Loaded AI settings from cookie.', 'info');
+          } else {
+              // Save default settings if no cookie is found
+              saveSettingsToCookie();
+          }
+          
+          if (apiUrlInput) apiUrlInput.value = aiSettings.apiUrl;
+          if (modelNameInput) modelNameInput.value = aiSettings.model;
+
+      } catch (e) {
+          logToConsole(`Failed to load settings, using defaults: ${e.message}`, 'warn');
+          if (apiUrlInput) apiUrlInput.value = aiSettings.apiUrl;
+          if (modelNameInput) modelNameInput.value = aiSettings.model;
+      }
+  }
+
+  document.getElementById('save-settings-btn')?.addEventListener('click', () => {
+      const apiUrlInput = document.getElementById('ollama-api-url') as HTMLInputElement;
+      const modelNameInput = document.getElementById('ollama-model-name') as HTMLInputElement;
+      aiSettings.apiUrl = apiUrlInput.value.trim();
+      aiSettings.model = modelNameInput.value.trim();
+      saveSettingsToCookie();
+  });
+
 
   // Function to pre-fill the AI prompt based on a selected token
   async function setAiPromptForToken(tokenName, tokenSymbol, tokenId) {
@@ -241,40 +290,89 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  async function queryAiCore(prompt) {
-    logToConsole(`Querying Gemini AI Core...`, 'info');
+  async function queryAiCore(prompt: string, isJsonMode = false) {
+    if (!aiSettings.apiUrl || !aiSettings.model) {
+        logToConsole('Ollama API URL or model is not configured. Please check System settings.', 'error');
+        return null;
+    }
+    logToConsole(`Querying local Ollama AI Core (${aiSettings.model})...`, 'info');
     aiSubmitBtn.disabled = true;
     aiSubmitBtn.textContent = 'Thinking...';
-    aiSignalBtn.disabled = true; // Also disable signal button during query
+    aiSignalBtn.disabled = true;
+
     try {
-        const result = await ai.models.generateContentStream({
-            model: "gemini-2.5-flash",
-            contents: prompt,
+        const response = await fetch(`${aiSettings.apiUrl}/api/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: aiSettings.model,
+                prompt: prompt,
+                format: isJsonMode ? 'json' : undefined,
+                stream: !isJsonMode
+            }),
         });
-
-        const timestamp = new Date().toLocaleTimeString();
-        const logEntry = document.createElement('div');
-        const responseContent = document.createElement('span');
-        logEntry.innerHTML = `<span class="log-info">[${timestamp}]</span> <span class="log-ok">AI Response: </span>`;
-        logEntry.appendChild(responseContent);
-        consoleElement.appendChild(logEntry);
-
-        for await (const chunk of result) {
-            const chunkText = chunk.text;
-            responseContent.innerHTML += chunkText.replace(/\n/g, '<br>');
-            consoleElement.scrollTop = consoleElement.scrollHeight;
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Ollama API error (${response.status}): ${errorText}`);
         }
+
+        // Handle streaming response
+        if (!isJsonMode && response.body) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            const responseContent = document.createElement('span');
+            logEntry.innerHTML = `<span class="log-info">[${timestamp}]</span> <span class="log-ok">AI Response: </span>`;
+            logEntry.appendChild(responseContent);
+            consoleElement.appendChild(logEntry);
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || ''; // Keep the last, possibly incomplete line
+                
+                lines.forEach(line => {
+                    if (line.trim()) {
+                        try {
+                            const chunk = JSON.parse(line);
+                            if (chunk.response) {
+                                responseContent.innerHTML += chunk.response.replace(/\n/g, '<br>');
+                                consoleElement.scrollTop = consoleElement.scrollHeight;
+                            }
+                        } catch (e) {
+                           console.warn('Could not parse streaming chunk:', line);
+                        }
+                    }
+                });
+            }
+            return "Streaming complete."; // Signal success for streaming.
+        } 
+        // Handle non-streaming JSON response
+        else {
+            const result = await response.json();
+            // Ollama non-streaming with format:json wraps the response.
+            return JSON.parse(result.response);
+        }
+
     } catch (error) {
-      logToConsole(`Error querying Gemini: ${error.message}`, 'error');
+        logToConsole(`Error querying Ollama: ${error.message}. Is it running at ${aiSettings.apiUrl}?`, 'error');
+        return null;
     } finally {
         aiSubmitBtn.disabled = false;
         aiSubmitBtn.textContent = 'Query AI Core';
-        // Re-enable signal button only if wallet is connected
         if (userAccount) {
             aiSignalBtn.disabled = false;
         }
     }
-  }
+}
+
 
   aiSubmitBtn.addEventListener('click', () => {
     const promptText = aiPromptInput.value.trim();
@@ -295,27 +393,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const prompt = `
         You are an expert crypto market analyst integrated into a DEX application. 
         Generate exactly 3 concise, insightful questions a user might ask about the current cryptocurrency market.
-        These questions will be used as suggested prompts for an AI.
+        The questions will be used as suggested prompts for an AI.
         The prompts should be distinct and cover different aspects like market sentiment, specific asset analysis, and future trends.
-        Return the questions as a JSON array of strings.
+        Return ONLY a single, raw, valid JSON array of strings. Do not include any other text, explanations, or markdown formatting.
+        Example: ["What is the current market sentiment?", "Analyze Bitcoin's recent price action.", "What are the top 3 altcoins to watch this month?"]
       `;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.STRING,
-              description: "An insightful question about the crypto market."
-            }
-          }
-        }
-      });
-
-      const suggestions = JSON.parse(response.text);
+      
+      const suggestions = await queryAiCore(prompt, true);
 
       if (Array.isArray(suggestions) && suggestions.length > 0) {
         logToConsole('Generated prompt suggestions.', 'ok');
@@ -955,10 +1039,14 @@ Based on this data, provide a clear signal including:
     if (confirm('Are you sure you want to clear all local data? This will affect recurring tasks and the Kanban board. This cannot be undone.')) {
         localStorage.removeItem(RECURRING_TASKS_KEY);
         localStorage.removeItem(KANBAN_TASKS_KEY);
+        document.cookie = `${SETTINGS_COOKIE_KEY}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
         recurringTasks = [];
         renderTasks();
         renderKanbanBoard();
         logToConsole('All local data has been cleared.', 'warn');
+        // Reset settings to default and update UI
+        aiSettings = { apiUrl: 'http://localhost:11434', model: 'llama3' };
+        loadSettingsFromCookie();
     }
   });
   
@@ -1183,7 +1271,8 @@ Based on this data, provide a clear signal including:
   // INITIALIZATION
   // ===============================================
   function init() {
-    logToConsole('Initializing AI Unified Tool v2.0.0...', 'info');
+    logToConsole('Initializing AI Unified Tool v2.1.0 (Ollama Edition)...', 'info');
+    loadSettingsFromCookie();
     updateTradingViewWidget();
     fetchCoinGeckoTrending();
     populateTokenSelects();
