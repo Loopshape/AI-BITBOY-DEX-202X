@@ -625,6 +625,52 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ===============================================
+    // LEVERAGE SLIDER & PERSISTENCE
+    // ===============================================
+    const leverageSlider = document.getElementById('leverage-slider') as HTMLInputElement;
+    const leverageValueEl = document.getElementById('leverage-value') as HTMLElement;
+    const leveragePresetBtns = document.querySelectorAll('.leverage-preset-btn');
+
+    function setLeverage(value: string | number, save: boolean = true) {
+        if (!leverageSlider || !leverageValueEl) return;
+        
+        const numericValue = typeof value === 'string' ? parseInt(value, 10) : value;
+        const clampedValue = Math.max(parseInt(leverageSlider.min, 10), Math.min(parseInt(leverageSlider.max, 10), numericValue));
+        
+        leverageSlider.value = clampedValue.toString();
+        leverageValueEl.textContent = `${clampedValue}x`;
+
+        if (save) {
+            localStorage.setItem(LEVERAGE_KEY, clampedValue.toString());
+        }
+    }
+    
+    if (leverageSlider) {
+        leverageSlider.addEventListener('input', (e) => {
+            setLeverage((e.target as HTMLInputElement).value);
+        });
+    }
+
+    leveragePresetBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const value = (e.currentTarget as HTMLElement).dataset.value || '100';
+            setLeverage(value);
+        });
+    });
+
+    function loadLeverage() {
+        const savedLeverage = localStorage.getItem(LEVERAGE_KEY);
+        if (savedLeverage) {
+            setLeverage(savedLeverage, false); // Don't save again on load
+        } else {
+            // Set default from slider if nothing is saved
+             if (leverageSlider) {
+                setLeverage(leverageSlider.value, false);
+            }
+        }
+    }
+
+    // ===============================================
     // RECURRING TASKS
     // ===============================================
     const recurringTaskForm = document.getElementById('recurring-task-form') as HTMLFormElement;
@@ -833,6 +879,7 @@ document.addEventListener('DOMContentLoaded', () => {
       logToTerminal('Initializing NEMODIAN COREMOVEMENT 202X...', 'info');
       loadHudAndTerminalSettings();
       fetchAndPopulateTokens();
+      loadLeverage();
       loadRecurringTasks();
       loadKanbanTasks();
       updateTradeButtonsState();
