@@ -1,6 +1,5 @@
 
 
-
 import * as bip39 from 'bip39';
 import { Web3Modal } from '@web3modal/standalone';
 import { ethers } from 'https://esm.run/ethers';
@@ -353,12 +352,11 @@ document.addEventListener('DOMContentLoaded', () => {
     provider.removeListener('disconnect', handleDisconnect);
   }
 
-  // Fix: Define the missing updateTradeButtonsState function.
   // This function is called on wallet connect/disconnect to update the UI.
-  // It assumes that trade execution buttons have a 'trade-action-btn' class.
   function updateTradeButtonsState() {
     const isWalletConnected = !!walletAddress;
-    const tradeButtons = document.querySelectorAll('.trade-action-btn') as NodeListOf<HTMLButtonElement>;
+    // Corrected selector to target actual trade buttons by ID and class
+    const tradeButtons = document.querySelectorAll('#swap-btn, #ai-signal-btn, .trade-btn') as NodeListOf<HTMLButtonElement>;
 
     tradeButtons.forEach(button => {
         button.disabled = !isWalletConnected;
@@ -744,24 +742,37 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ===============================================
-    // NFT CAROUSEL
+    // NFT CAROUSEL & DETAILS MODAL
     // ===============================================
     function setupNftCarousel() {
         const carousel = document.querySelector('.carousel') as HTMLElement;
         const prevButton = document.getElementById('carousel-prev-btn');
         const nextButton = document.getElementById('carousel-next-btn');
-        if (!carousel || !prevButton || !nextButton) return;
+        const nftDetailModal = document.getElementById('nft-details-modal');
+        const closeNftDetailModalBtn = document.getElementById('close-nft-modal-btn');
+        if (!carousel || !prevButton || !nextButton || !nftDetailModal || !closeNftDetailModalBtn) return;
+        
+        type NftTrait = { name: string; value: string };
+        type Nft = {
+            id: number;
+            title: string;
+            creator: string;
+            image: string;
+            description: string;
+            traits: NftTrait[];
+            price: string;
+        };
 
-        const placeholderNfts = [
-            { id: 1, title: "Cyberscape #42", creator: "0xNeo", image: "https://picsum.photos/seed/a/400/300" },
-            { id: 2, title: "Glitch Orb", creator: "GlitchArt", image: "https://picsum.photos/seed/b/400/300" },
-            { id: 3, title: "Neon Wanderer", creator: "Aris", image: "https://picsum.photos/seed/c/400/300" },
-            { id: 4, title: "Digital Relic", creator: "Archive.ETH", image: "https://picsum.photos/seed/d/400/300" },
-            { id: 5, title: "Chrome Heart", creator: "Metallo", image: "https://picsum.photos/seed/e/400/300" },
-            { id: 6, title: "Aetherform", creator: "Etherea", image: "https://picsum.photos/seed/f/400/300" },
-            { id: 7, title: "Singularity", creator: "Unit731", image: "https://picsum.photos/seed/g/400/300" },
-            { id: 8, title: "Retro Future", creator: "8-Bit", image: "https://picsum.photos/seed/h/400/300" },
-            { id: 9, title: "Data Stream", creator: "FlowViz", image: "https://picsum.photos/seed/i/400/300" },
+        const placeholderNfts: Nft[] = [
+            { id: 1, title: "Cyberscape #42", creator: "0xNeo", image: "https://picsum.photos/seed/a/400/300", description: "A glimpse into a rain-soaked neon city of the future, where data flows like water.", traits: [{name: "Background", value: "Neon City"}, {name: "Weather", value: "Rain"}, {name: "Style", value: "Pixelated"}], price: "1.25 ETH" },
+            { id: 2, title: "Glitch Orb", creator: "GlitchArt", image: "https://picsum.photos/seed/b/400/300", description: "An unstable sphere of pure data, beautiful and chaotic. Handle with care.", traits: [{name: "Form", value: "Sphere"}, {name: "Effect", value: "Glitch"}, {name: "Color", value: "Prismatic"}], price: "0.80 ETH" },
+            { id: 3, title: "Neon Wanderer", creator: "Aris", image: "https://picsum.photos/seed/c/400/300", description: "A lone figure traverses the digital wastes, seeking the source of the signal.", traits: [{name: "Character", value: "Wanderer"}, {name: "Accessory", value: "Katana"}, {name: "Palette", value: "Synthwave"}], price: "2.50 ETH" },
+            { id: 4, title: "Digital Relic", creator: "Archive.ETH", image: "https://picsum.photos/seed/d/400/300", description: "A fossilized piece of the old net, containing memories of a forgotten time.", traits: [{name: "Era", value: "Dial-up"}, {name: "Type", value: "Floppy Disk"}, {name: "State", value: "Corrupted"}], price: "0.45 ETH" },
+            { id: 5, title: "Chrome Heart", creator: "Metallo", image: "https://picsum.photos/seed/e/400/300", description: "The core of an ancient android, still beating with a faint, electric pulse.", traits: [{name: "Material", value: "Chrome"}, {name: "Component", value: "CPU"}, {name: "Energy", value: "Faint"}], price: "3.10 ETH" },
+            { id: 6, title: "Aetherform", creator: "Etherea", image: "https://picsum.photos/seed/f/400/300", description: "A being of pure energy, born from the blockchain itself.", traits: [{name: "Element", value: "Aether"}, {name: "Rarity", value: "Mythic"}, {name: "Aura", value: "Glowing"}], price: "5.00 ETH" },
+            { id: 7, title: "Singularity", creator: "Unit731", image: "https://picsum.photos/seed/g/400/300", description: "The moment an AI achieved self-awareness, captured in a single, timeless frame.", traits: [{name: "Event", value: "The Awakening"}, {name: "Entity", value: "AI Core"}, {name: "Emotion", value: "Genesis"}], price: "9.99 ETH" },
+            { id: 8, title: "Retro Future", creator: "8-Bit", image: "https://picsum.photos/seed/h/400/300", description: "A vision of the year 202X, as imagined from the 1980s.", traits: [{name: "Vehicle", value: "DeLorean"}, {name: "Scenery", value: "Gridscape"}, {name: "Soundtrack", value: "Chiptune"}], price: "0.77 ETH" },
+            { id: 9, title: "Data Stream", creator: "FlowViz", image: "https://picsum.photos/seed/i/400/300", description: "Visual representation of the Zettabyte era's data flow.", traits: [{name: "Concept", value: "Big Data"}, {name: "Movement", value: "Flowing"}, {name: "Color", value: "Binary Green"}], price: "0.62 ETH" },
         ];
         
         const cellCount = placeholderNfts.length;
@@ -769,12 +780,53 @@ document.addEventListener('DOMContentLoaded', () => {
         const radius = Math.round((210 / 2) / Math.tan(Math.PI / cellCount));
         let selectedIndex = 0;
 
+        const openNftDetailModal = (nft: Nft) => {
+            const modalTitle = document.getElementById('nft-modal-title');
+            const modalCreator = document.getElementById('nft-modal-creator');
+            const modalImage = document.getElementById('nft-modal-image') as HTMLImageElement;
+            const modalDescription = document.getElementById('nft-modal-description');
+            const modalTraits = document.getElementById('nft-modal-traits');
+            const modalPrice = document.getElementById('nft-modal-price');
+
+            if (!modalTitle || !modalCreator || !modalImage || !modalDescription || !modalTraits || !modalPrice) return;
+            
+            modalTitle.textContent = nft.title;
+            modalCreator.textContent = `by ${nft.creator}`;
+            modalImage.src = nft.image;
+            modalImage.alt = nft.title;
+            modalDescription.textContent = nft.description;
+            modalPrice.textContent = nft.price;
+
+            modalTraits.innerHTML = '';
+            nft.traits.forEach(trait => {
+                const traitEl = document.createElement('div');
+                traitEl.className = 'nft-trait-tag';
+                traitEl.innerHTML = `<span class="name">${trait.name}:</span> <span class="value">${trait.value}</span>`;
+                modalTraits.appendChild(traitEl);
+            });
+            
+            nftDetailModal.style.display = 'flex';
+        };
+
+        const closeNftDetailModal = () => {
+            nftDetailModal.style.display = 'none';
+        };
+        
+        closeNftDetailModalBtn.addEventListener('click', closeNftDetailModal);
+        nftDetailModal.addEventListener('click', (e) => {
+            if (e.target === nftDetailModal) {
+                closeNftDetailModal();
+            }
+        });
+
         // Populate carousel
+        carousel.innerHTML = ''; // Clear existing items to prevent duplication
         placeholderNfts.forEach((nft, i) => {
             const cell = document.createElement('div');
             cell.className = 'carousel-item';
             const angle = theta * i;
-            cell.style.transform = `rotateY(${angle}deg) translateZ(${radius}px)`;
+            const initialTransform = `rotateY(${angle}deg) translateZ(${radius}px)`;
+            cell.style.transform = initialTransform;
             
             cell.innerHTML = `
                 <img src="${nft.image}" alt="${nft.title}">
@@ -783,6 +835,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p class="small mono">by ${nft.creator}</p>
                 </div>
             `;
+            cell.addEventListener('click', () => openNftDetailModal(nft));
+
+            // Add hover listeners for animation
+            cell.addEventListener('mouseenter', () => {
+                cell.style.transform = `${initialTransform} scale(1.05)`;
+            });
+            cell.addEventListener('mouseleave', () => {
+                cell.style.transform = initialTransform;
+            });
+            
             carousel.appendChild(cell);
         });
 
