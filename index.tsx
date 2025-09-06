@@ -13,6 +13,8 @@ declare var TradingView: any;
 declare var gsap: any;
 // Declare jQuery
 declare var $: any;
+// Declare marked
+declare var marked: any;
 
 
 // Extend Window interface for MetaMask/Web3 wallet compatibility
@@ -34,8 +36,8 @@ VANTA.NET({
   minWidth: 200.00,
   scale: 1.00,
   scaleMobile: 1.00,
-  color: 0x00ffcc,
-  backgroundColor: 0x0a1a2f,
+  color: 0xf78d60,
+  backgroundColor: 0x1e2a78,
   points: 10.00,
   maxDistance: 22.00,
   spacing: 18.00
@@ -78,8 +80,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const FROM_TOKEN_KEY = 'dex_from_token';
   const TO_TOKEN_KEY = 'dex_to_token';
   const LEVERAGE_KEY = 'dex_leverage';
-  const AI_CHAT_HISTORY_KEY = 'bitboy_ai_dex_chat_history';
+  const OLLAMA_CHAT_HISTORY_KEY = 'ollama_chat_history';
   const COINGECKO_API_KEY = 'coingecko_api_key';
+  const OLLAMA_API_URL_KEY = 'ollama_api_url';
+  const OLLAMA_MODEL_NAME_KEY = 'ollama_model_name';
+  const OLLAMA_TEMPERATURE_KEY = 'ollama_temperature';
+  const OLLAMA_MAX_TOKENS_KEY = 'ollama_max_tokens';
 
 
   // ===============================================
@@ -176,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
               await QRCode.toCanvas(qrCanvas, walletAddress, {
                   width: 250,
                   margin: 2,
-                  color: { dark: '#0a1a2f', light: '#ffffff' }
+                  color: { dark: '#1e2a78', light: '#ffffff' }
               });
               qrModalAddress.textContent = walletAddress;
               qrModal.style.display = 'flex';
@@ -205,9 +211,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   // --- Theme Sync Manager ---
-  const neonThemes = ["#00ffcc", "#ff00ff", "#ffff33", "#00ff00"];
-  let currentThemeIndex = 0;
-
   function applyTheme(color: string) {
     const elementsToTheme = $hudWidgets.add($term);
     elementsToTheme.css({
@@ -223,12 +226,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     ($termInput as any).css('caret-color', color);
     $termInput.css('border-top-color', color);
-    localStorage.setItem("neonTheme", color);
-  }
-
-  function switchTheme() {
-    currentThemeIndex = (currentThemeIndex + 1) % neonThemes.length;
-    applyTheme(neonThemes[currentThemeIndex]);
   }
 
   // --- HUD Drag + Save ---
@@ -264,10 +261,6 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.removeItem("hudWidgetsPos");
     $hudMenu.hide();
   });
-  $('#hudTheme').on('click', () => {
-    switchTheme();
-    $hudMenu.hide();
-  });
 
   $term.on('contextmenu', function(e: any) {
     e.preventDefault();
@@ -280,10 +273,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   $('#termCopy').on('click', () => {
     navigator.clipboard.writeText($('#termOutput').text()).then(() => logToTerminal("Terminal content copied to clipboard.", 'ok'));
-    $termMenu.hide();
-  });
-  $('#termTheme').on('click', () => {
-    switchTheme();
     $termMenu.hide();
   });
   
@@ -300,21 +289,11 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       $('#hudReset').trigger('click');
     }
-    if (e.ctrlKey && e.key.toLowerCase() === 't') {
-      e.preventDefault();
-      switchTheme();
-    }
   });
   
   // --- Load saved settings ---
   function loadHudAndTerminalSettings() {
-      const savedTheme = localStorage.getItem("neonTheme");
-      if (savedTheme) {
-          currentThemeIndex = neonThemes.indexOf(savedTheme) >= 0 ? neonThemes.indexOf(savedTheme) : 0;
-          applyTheme(savedTheme);
-      } else {
-          applyTheme(neonThemes[0]);
-      }
+      applyTheme('#f78d60'); // Apply the new mandatory theme color
 
       const savedPos = localStorage.getItem("hudWidgetsPos");
       if (savedPos) {
@@ -747,145 +726,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function saveKanbanTasks() {
         localStorage.setItem(KANBAN_TASKS_KEY, JSON.stringify(kanbanTasks));
-    }
-
-    function loadKanbanTasks() {
-        const savedTasksJSON = localStorage.getItem(KANBAN_TASKS_KEY);
-        if (savedTasksJSON) {
-            try {
-                const parsed = JSON.parse(savedTasksJSON);
-                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) &&
-                    Array.isArray(parsed.backlog) && Array.isArray(parsed.inprogress) && Array.isArray(parsed.completed)) {
-                    kanbanTasks = parsed;
-                } else {
-                    throw new Error("Invalid Kanban data structure");
-                }
-            } catch (e) {
-                logToTerminal('Kanban tasks data in localStorage is corrupted. Resetting.', 'warn');
-                localStorage.removeItem(KANBAN_TASKS_KEY);
-                kanbanTasks = { backlog: [], inprogress: [], completed: [] };
-            }
-        }
-        renderAllKanbanTasks();
-    }
     
-    function renderKanbanTask(task: { id: number, title: string, desc: string }, status: string) {
-        const column = document.querySelector(`.kanban-column[data-status="${status}"] .kanban-tasks`);
-        if (!column) return;
-
-        const taskEl = document.createElement('div');
-        taskEl.className = 'kanban-task';
-        taskEl.dataset.id = task.id.toString();
-        taskEl.draggable = true;
-        taskEl.innerHTML = `
-            <button class="delete-task-btn" data-id="${task.id}" data-status="${status}">X</button>
-            <strong>${task.title}</strong>
-            <p>${task.desc}</p>
-        `;
-
-        taskEl.addEventListener('dragstart', handleDragStart);
-        column.appendChild(taskEl);
-    }
-    
-    function renderAllKanbanTasks() {
-        document.querySelectorAll('.kanban-tasks').forEach(col => col.innerHTML = '');
-        Object.keys(kanbanTasks).forEach(status => {
-            kanbanTasks[status].forEach(task => renderKanbanTask(task, status));
-        });
-        document.querySelectorAll('.delete-task-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const target = e.currentTarget as HTMLElement;
-                const id = parseInt(target.dataset.id || '0');
-                const status = target.dataset.status || '';
-                if(id && status) {
-                    kanbanTasks[status] = kanbanTasks[status].filter(t => t.id !== id);
-                    saveKanbanTasks();
-                    renderAllKanbanTasks();
-                }
-            });
-        });
-    }
-
-    document.getElementById('add-task-btn')?.addEventListener('click', () => {
-        const titleInput = document.getElementById('new-task-title') as HTMLInputElement;
-        const descInput = document.getElementById('new-task-desc') as HTMLTextAreaElement;
-        const title = titleInput.value.trim();
-        const desc = descInput.value.trim();
-
-        if (title) {
-            const newTask = { id: Date.now(), title, desc };
-            kanbanTasks.backlog.push(newTask);
-            saveKanbanTasks();
-            renderAllKanbanTasks();
-            titleInput.value = '';
-            descInput.value = '';
-        }
-    });
-
-    // Kanban Drag & Drop
-    let draggedItemId: number | null = null;
-    let originalStatus: string | null = null;
-    
-    function handleDragStart(e: DragEvent) {
-        const target = e.target as HTMLElement;
-        draggedItemId = parseInt(target.dataset.id || '0');
-        originalStatus = (target.closest('.kanban-column') as HTMLElement)?.dataset.status || null;
-        target.classList.add('dragging');
-        e.dataTransfer!.effectAllowed = 'move';
-    }
-
-    document.querySelectorAll('.kanban-column').forEach(col => {
-        col.addEventListener('dragover', (e: DragEvent) => {
-            e.preventDefault();
-            e.dataTransfer!.dropEffect = 'move';
-            (e.currentTarget as HTMLElement).classList.add('drag-over');
-        });
-        col.addEventListener('dragleave', (e: DragEvent) => {
-            (e.currentTarget as HTMLElement).classList.remove('drag-over');
-        });
-        col.addEventListener('drop', (e: DragEvent) => {
-            e.preventDefault();
-            (e.currentTarget as HTMLElement).classList.remove('drag-over');
-            const newStatus = (e.currentTarget as HTMLElement).dataset.status;
-
-            if (newStatus && originalStatus && draggedItemId && newStatus !== originalStatus) {
-                const taskIndex = kanbanTasks[originalStatus].findIndex(t => t.id === draggedItemId);
-                if (taskIndex > -1) {
-                    const [task] = kanbanTasks[originalStatus].splice(taskIndex, 1);
-                    kanbanTasks[newStatus].push(task);
-                    saveKanbanTasks();
-                    renderAllKanbanTasks();
-                }
-            }
-            document.querySelector('.kanban-task.dragging')?.classList.remove('dragging');
-            draggedItemId = null;
-            originalStatus = null;
-        });
-    });
-
-    // ===============================================
-    // DUMMY/MOCK FUNCTIONS
-    // ===============================================
-    function updateTradeButtonsState() {
-      const connected = !!walletAddress;
-      const tradeButtons = document.querySelectorAll('.trade-btn, #swap-btn, #ai-signal-btn') as NodeListOf<HTMLButtonElement>;
-      tradeButtons.forEach(btn => btn.disabled = !connected);
-    }
-    
-    // ===============================================
-    // INITIALIZATION
-    // ===============================================
-    function initialize() {
-      logToTerminal('Initializing NEMODIAN COREMOVEMENT 202X...', 'info');
-      loadHudAndTerminalSettings();
-      fetchAndPopulateTokens();
-      loadLeverage();
-      loadRecurringTasks();
-      loadKanbanTasks();
-      updateTradeButtonsState();
-      logToTerminal('System ready.', 'ok');
-      $hudStatus.text('Status: Standby');
-    }
-
-    initialize();
-});
