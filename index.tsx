@@ -1,291 +1,346 @@
-document.addEventListener('DOMContentLoaded', function() {
-    // DOM Elements
-    const connectModal = document.getElementById('connect-modal') as HTMLElement;
-    const connectBtn = document.getElementById('header-connect-btn') as HTMLElement;
-    const disconnectBtn = document.getElementById('header-disconnect-btn') as HTMLElement;
-    const closeModalBtn = document.querySelector('.close-modal') as HTMLElement;
-    const walletInfo = document.getElementById('wallet-info') as HTMLElement;
-    const walletStatus = document.getElementById('wallet-status-indicator') as HTMLElement;
-    const terminal = document.getElementById('terminal') as HTMLElement;
-    const previewArea = document.getElementById('preview-area') as HTMLElement;
-    const resetBtn = document.getElementById('reset-btn') as HTMLElement;
-    const exportBtn = document.getElementById('export-btn') as HTMLElement;
-    const previewBtn = document.getElementById('preview-btn') as HTMLElement;
-    const propertiesEditor = document.getElementById('properties-editor') as HTMLElement;
-    const dexModule = document.getElementById('dex-main-module') as HTMLElement;
 
-    // State
-    let walletConnected: boolean = false;
-    let walletAddress: string | null = null;
-    let selectedPart: HTMLElement | null = null;
-    
-    type ToastType = 'info' | 'success' | 'warning' | 'error';
+import * as bip39 from 'bip39';
+import { Web3Modal } from '@web3modal/standalone';
+import { ethers } from 'https://esm.run/ethers';
+import QRCode from 'qrcode';
 
-    // Toast notification system
-    function showToast(message: string, type: ToastType = 'info') {
-        const toastContainer = document.getElementById('toastContainer') as HTMLElement;
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        toast.textContent = message;
-        toastContainer.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.classList.add('out');
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    toastContainer.removeChild(toast);
-                }
-            }, 300);
-        }, 5000);
-    }
-    
-    // Log to terminal
-    function logToTerminal(message: string, type: ToastType = 'info') {
-        const logEntry = document.createElement('div');
-        logEntry.className = 'log-entry';
-        const timestamp = new Date().toLocaleTimeString();
-        logEntry.innerHTML = `<span class="log-timestamp">[${timestamp}]</span> <span class="log-${type}">${message}</span>`;
-        terminal.appendChild(logEntry);
-        terminal.scrollTop = terminal.scrollHeight;
-    }
-    
-    // Initial logs
-    logToTerminal('DEX Builder initialized', 'info');
-    logToTerminal('Web3 environment ready', 'success');
-    logToTerminal('Wallet not connected', 'warning');
-    
-    // Modal functionality
-    connectBtn.addEventListener('click', () => { connectModal.style.display = 'flex'; });
-    closeModalBtn.addEventListener('click', () => { connectModal.style.display = 'none'; });
-    window.addEventListener('click', (e: MouseEvent) => {
-        if (e.target === connectModal) {
-            connectModal.style.display = 'none';
-        }
-    });
-    
-    // Wallet connection handlers
-    (document.getElementById('connect-metamask-btn') as HTMLElement).addEventListener('click', connectWallet);
-    (document.getElementById('connect-walletconnect-btn') as HTMLElement).addEventListener('click', connectWallet);
-    (document.getElementById('connect-cli-btn') as HTMLElement).addEventListener('click', connectWallet);
-    disconnectBtn.addEventListener('click', disconnectWallet);
-    
-    function connectWallet() {
-        connectModal.style.display = 'none';
-        walletConnected = true;
-        walletAddress = '0x' + Math.random().toString(16).slice(2, 10) + '...' + Math.random().toString(16).slice(2, 6);
-        walletInfo.style.display = 'flex';
-        connectBtn.style.display = 'none';
-        disconnectBtn.style.display = 'block';
-        (document.getElementById('header-wallet-address') as HTMLElement).textContent = walletAddress;
-        (document.getElementById('header-wallet-balance') as HTMLElement).textContent = (Math.random() * 2).toFixed(4) + ' ETH';
-        walletStatus.classList.remove('disconnected');
-        walletStatus.classList.add('connected', 'pulsing');
-        (dexModule.querySelector('.swap-button') as HTMLElement).textContent = 'Swap';
-        logToTerminal('Wallet connected successfully', 'success');
-        logToTerminal(`Address: ${walletAddress}`, 'info');
-        showToast('Wallet connected successfully', 'success');
-    }
-    
-    function disconnectWallet() {
-        walletConnected = false;
-        walletAddress = null;
-        walletInfo.style.display = 'none';
-        connectBtn.style.display = 'block';
-        disconnectBtn.style.display = 'none';
-        walletStatus.classList.remove('connected', 'pulsing');
-        walletStatus.classList.add('disconnected');
-        (dexModule.querySelector('.swap-button') as HTMLElement).textContent = 'Connect Wallet';
-        logToTerminal('Wallet disconnected', 'warning');
-        showToast('Wallet disconnected', 'warning');
-    }
 
-    // DEX Component Selection
-    function selectPart(part: HTMLElement) {
-        if (selectedPart) {
-            selectedPart.classList.remove('selected');
-        }
-        selectedPart = part;
-        selectedPart.classList.add('selected');
-        populateProperties(selectedPart);
-    }
+// Declare VANTA to make it available in TypeScript
+declare var VANTA: any;
+// Declare TradingView for the widget
+declare var TradingView: any;
+// Declare gsap
+declare var gsap: any;
+// Declare jQuery
+declare var $: any;
+// Declare marked
+declare var marked: any;
 
-    function deselectPart() {
-        if (selectedPart) {
-            selectedPart.classList.remove('selected');
-            selectedPart = null;
-            propertiesEditor.innerHTML = `<p class="properties-placeholder">Select a DEX element to edit its properties.</p>`;
-        }
-    }
-    
-    previewArea.addEventListener('click', (e) => {
-        const target = e.target as HTMLElement;
-        const editablePart = target.closest('[data-editable-part]') as HTMLElement;
 
-        if (editablePart) {
-            selectPart(editablePart);
-        } else if (target === previewArea || target.closest('.preview-panel')) {
-            deselectPart();
-        }
-    });
+// Extend Window interface for MetaMask/Web3 wallet compatibility
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
 
-    // Properties Editor
-    function populateProperties(part: HTMLElement) {
-        const partType = part.dataset.editablePart;
-        let propertiesHtml = '';
-
-        const createInput = (label: string, property: string, value: string, type: string = 'text') => `
-            <div class="property-group">
-                <label>${label}</label>
-                <input type="${type}" data-property="${property}" value="${value}">
-            </div>`;
-
-        switch(partType) {
-            case 'dex-title':
-                propertiesHtml = createInput('Title Text', 'text', part.textContent || 'Swap Tokens');
-                break;
-            case 'dex-swap-box':
-                propertiesHtml = createInput('Background Color', 'background', '#0f172a', 'color');
-                break;
-            case 'dex-swap-button':
-                 propertiesHtml = `
-                    ${createInput('Button Text', 'text', part.textContent || 'Swap')}
-                    ${createInput('Background Color', 'background', '#f78d60', 'color')}
-                 `;
-                break;
-            case 'dex-settings':
-                propertiesHtml = `
-                    <div class="property-group">
-                        <label>Slippage Tolerance</label>
-                        <select data-property="slippage">
-                            <option value="0.1">0.1%</option>
-                            <option value="0.5" selected>0.5%</option>
-                            <option value="1.0">1.0%</option>
-                        </select>
-                    </div>
-                `;
-                break;
-            default:
-                propertiesHtml = `<p class="properties-placeholder">No editable properties for this element.</p>`;
-        }
-        propertiesEditor.innerHTML = propertiesHtml;
-        addPropertyListeners();
-    }
-
-    function addPropertyListeners() {
-        propertiesEditor.querySelectorAll('input, select').forEach(input => {
-            input.addEventListener('input', (e) => {
-                if (!selectedPart) return;
-                const target = e.target as HTMLInputElement | HTMLSelectElement;
-                const property = target.dataset.property;
-                const value = target.value;
-
-                switch(property) {
-                    case 'text':
-                        selectedPart.textContent = value;
-                        break;
-                    case 'background':
-                        selectedPart.style.backgroundColor = value;
-                        break;
-                    case 'slippage':
-                        logToTerminal(`Slippage set to ${value}%`, 'info');
-                        showToast(`Slippage tolerance updated to ${value}%`, 'info');
-                        break;
-                }
-            });
-        });
-    }
-    
-    // Action Buttons
-    resetBtn.addEventListener('click', function() {
-        // This would reset the DEX to its original state. For simplicity, we just log it.
-        logToTerminal('DEX state reset', 'info');
-        showToast('DEX reset to default', 'info');
-        // A full implementation would re-render the original component HTML or reset styles/text.
-        window.location.reload();
-    });
-    
-    exportBtn.addEventListener('click', function() {
-        logToTerminal('Exporting DEX code...', 'info');
-        setTimeout(() => {
-            logToTerminal('DEX code exported successfully', 'success');
-            showToast(`Exported DEX!`, 'success');
-        }, 1000);
-    });
-    
-    previewBtn.addEventListener('click', function() {
-        logToTerminal('Launching DEX preview...', 'info');
-        setTimeout(() => {
-            logToTerminal('Preview launched successfully', 'success');
-            showToast(`Launching preview...`, 'success');
-        }, 1000);
-    });
-    
-    // Drag and Drop Functionality
-    const componentItems = document.querySelectorAll('.component-item') as NodeListOf<HTMLElement>;
-
-    componentItems.forEach(item => {
-        item.addEventListener('dragstart', (e) => {
-            if (e.dataTransfer) {
-                e.dataTransfer.setData('text/plain', item.dataset.type || '');
-            }
-            setTimeout(() => item.classList.add('dragging'), 0);
-        });
-
-        item.addEventListener('dragend', () => {
-            item.classList.remove('dragging');
-        });
-    });
-
-    previewArea.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        previewArea.classList.add('drag-over');
-    });
-
-    previewArea.addEventListener('dragleave', () => {
-        previewArea.classList.remove('drag-over');
-    });
-
-    previewArea.addEventListener('drop', (e) => {
-        e.preventDefault();
-        previewArea.classList.remove('drag-over');
-        if (e.dataTransfer) {
-            const componentType = e.dataTransfer.getData('text/plain');
-            if (componentType) {
-                addComponentToPreview(componentType);
-            }
-        }
-    });
-
-    function addComponentToPreview(type: string) {
-        const originalItem = document.querySelector(`.component-item[data-type="${type}"]`);
-        if (!originalItem) return;
-
-        const iconHtml = originalItem.querySelector('.component-icon')?.innerHTML || '';
-        const titleText = originalItem.querySelector('h3')?.textContent || 'Component';
-        
-        const placeholder = document.createElement('div');
-        placeholder.className = 'app-component component-placeholder';
-        placeholder.dataset.type = type;
-        
-        placeholder.innerHTML = `
-            <div class="component-icon">${iconHtml}</div>
-            <div>
-                <h3>${titleText}</h3>
-                <p>This component will be displayed here.</p>
-            </div>
-        `;
-        
-        previewArea.appendChild(placeholder);
-        logToTerminal(`'${titleText}' component added to preview`, 'info');
-        showToast(`Added ${titleText} component`, 'info');
-    }
-
-    // Parallax effect
-    document.addEventListener('mousemove', (e: MouseEvent) => {
-        const x = (e.clientX / window.innerWidth - 0.5) * 20;
-        const y = (e.clientY / window.innerHeight - 0.5) * 20;
-        document.querySelectorAll('.parallax-layer').forEach((layer, index) => {
-            (layer as HTMLElement).style.transform = `translateX(${x * (index + 1) * 0.5}px) translateY(${y * (index + 1) * 0.5}px)`;
-        });
-    });
+// ===============================================
+// VANTA.JS BACKGROUND
+// ===============================================
+VANTA.NET({
+  el: "#vanta-canvas",
+  mouseControls: true,
+  touchControls: true,
+  gyroControls: false,
+  minHeight: 200.00,
+  minWidth: 200.00,
+  scale: 1.00,
+  scaleMobile: 1.00,
+  color: 0xf78d60,
+  backgroundColor: 0x1e2a78,
+  points: 10.00,
+  maxDistance: 22.00,
+  spacing: 18.00
 });
+
+// ===============================================
+// GLOBAL TERMINAL LOGGER
+// ===============================================
+const termOutput = document.getElementById('termOutput') as HTMLElement;
+function logToTerminal(message: string, type: string = 'info') {
+  const logEntry = document.createElement('div');
+  logEntry.className = `log-${type}`;
+
+  const isSystemLog = ['info', 'ok', 'warn', 'error'].includes(type);
+
+  if (isSystemLog) {
+    const timestamp = new Date().toLocaleTimeString();
+    const timeSpan = document.createElement('span');
+    timeSpan.className = 'log-timestamp';
+    timeSpan.textContent = `[${timestamp}]`;
+    logEntry.appendChild(timeSpan);
+  }
+
+  const msgSpan = document.createElement('span');
+  msgSpan.className = 'log-content';
+  // Add leading space only for system logs that have a timestamp.
+  // Other types like 'user-prompt' will have their prefix/spacing handled by CSS.
+  msgSpan.textContent = isSystemLog ? ` ${message}` : message;
+  logEntry.appendChild(msgSpan);
+
+  gsap.from(logEntry, { duration: 0.5, opacity: 0, y: 10, ease: "power2.out" });
+  termOutput.appendChild(logEntry);
+  termOutput.scrollTop = termOutput.scrollHeight;
+}
+
+
+document.addEventListener('DOMContentLoaded', () => {
+
+  const RECURRING_TASKS_KEY = 'bitboy_ai_dex_tasks';
+  const KANBAN_TASKS_KEY = 'nemodian_kanban_tasks';
+  const FROM_TOKEN_KEY = 'dex_from_token';
+  const TO_TOKEN_KEY = 'dex_to_token';
+  const LEVERAGE_KEY = 'dex_leverage';
+  const OLLAMA_CHAT_HISTORY_KEY = 'ollama_chat_history';
+  const COINGECKO_API_KEY = 'coingecko_api_key';
+  const OLLAMA_API_URL_KEY = 'ollama_api_url';
+  const OLLAMA_MODEL_NAME_KEY = 'ollama_model_name';
+  const OLLAMA_TEMPERATURE_KEY = 'ollama_temperature';
+  const OLLAMA_MAX_TOKENS_KEY = 'ollama_max_tokens';
+
+
+  // ===============================================
+  // UI & UX Enhancements
+  // ===============================================
+  
+  // Parallax mouse effect
+  const parallaxLayers = document.querySelectorAll('.parallax-layer');
+  document.addEventListener('mousemove', (e) => {
+    const { clientX, clientY } = e;
+    const x = (clientX / window.innerWidth - 0.5) * 40;
+    const y = (clientY / window.innerHeight - 0.5) * 40;
+
+    parallaxLayers.forEach((layer, index) => {
+        const speed = (index + 1) * 0.5;
+        (layer as HTMLElement).style.transform = `translateX(${x * speed}px) translateY(${y * speed}px)`;
+    });
+  });
+
+  // Equalize card heights
+  function equalizeCardHeights() {
+      const cards = document.querySelectorAll('.grid > .stack .card') as NodeListOf<HTMLElement>;
+      let maxHeight = 0;
+      cards.forEach(card => {
+          card.style.minHeight = 'auto'; // Reset height first
+          if (card.offsetHeight > maxHeight) {
+              maxHeight = card.offsetHeight;
+          }
+      });
+      if (window.innerWidth >= 1024 && maxHeight > 0) {
+        cards.forEach(card => card.style.minHeight = `${maxHeight}px`);
+      }
+  }
+  window.addEventListener('load', equalizeCardHeights);
+  window.addEventListener('resize', equalizeCardHeights);
+
+
+  // Tabs
+  function setupTabs() {
+    const tabContainer = document.querySelector('#main-card');
+    if (!tabContainer) return;
+    
+    const tabButtons = tabContainer.querySelectorAll('.tab-button');
+    const tabContents = tabContainer.querySelectorAll('.tab-content');
+    const prominentButtons = document.querySelectorAll('.prominent-btn');
+
+    const switchTab = (targetId: string) => {
+        tabContents.forEach(content => {
+            content.classList.toggle('active', content.id === targetId);
+        });
+        tabButtons.forEach(button => {
+            button.classList.toggle('active', button.getAttribute('data-tab') === targetId);
+        });
+        prominentButtons.forEach(button => {
+            button.classList.toggle('active', button.getAttribute('data-tab') === targetId);
+        });
+        equalizeCardHeights(); // Re-calculate card height on tab change
+    };
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => switchTab(button.getAttribute('data-tab')!));
+    });
+
+    prominentButtons.forEach(button => {
+        button.addEventListener('click', () => switchTab(button.getAttribute('data-tab')!));
+    });
+  }
+
+
+  // Generic Modal
+  const modal = document.getElementById('generic-modal')!;
+  const modalTitle = document.getElementById('modal-title')!;
+  const modalBody = document.getElementById('modal-body')!;
+  const modalCloseBtn = modal.querySelector('.modal-close-btn')!;
+
+  function showModal(title: string, content: HTMLElement | string) {
+      modalTitle.textContent = title;
+      if (typeof content === 'string') {
+          modalBody.innerHTML = content;
+      } else {
+          modalBody.innerHTML = '';
+          modalBody.appendChild(content);
+      }
+      modal.classList.add('active');
+  }
+
+  function closeModal() {
+      modal.classList.remove('active');
+  }
+
+  modalCloseBtn.addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+  });
+
+
+  // ===============================================
+  // WEB3 & WALLET INTEGRATION
+  // ===============================================
+  const web3Modal = new Web3Modal({
+    projectId: '9a8d562a0504b264a858548a80494a86', // Replace with your WalletConnect project ID
+    walletConnectVersion: 2
+  });
+
+  let provider: ethers.BrowserProvider | null = null;
+  let signer: ethers.JsonRpcSigner | null = null;
+
+  const connectWalletBtn = document.getElementById('connectWalletBtn')!;
+  const disconnectWalletBtn = document.getElementById('disconnectWalletBtn')!;
+  const walletInfoDiv = document.getElementById('walletInfo')!;
+  const walletStatusSpan = document.getElementById('walletStatus')!;
+  const walletAddressSpan = document.getElementById('walletAddress')!;
+  const walletBalanceSpan = document.getElementById('walletBalance')!;
+
+  async function connectWallet() {
+    try {
+        logToTerminal('Connecting wallet...');
+        // FIX: The type definitions for Web3Modal seem to be for a different version, causing a compile-time error.
+        // Casting to `any` bypasses the incorrect type definition, assuming `connect` method exists at runtime (as in Web3Modal v1).
+        const web3Provider = await (web3Modal as any).connect();
+        provider = new ethers.BrowserProvider(web3Provider);
+        signer = await provider.getSigner();
+        updateWalletUI(true);
+        logToTerminal('Wallet connected successfully.', 'ok');
+    } catch (error) {
+        console.error("Failed to connect wallet:", error);
+        logToTerminal('Wallet connection failed or was rejected.', 'error');
+        updateWalletUI(false);
+    }
+  }
+
+  async function disconnectWallet() {
+      // Web3Modal v2 doesn't have a simple disconnect. 
+      // We can clear our state. User needs to disconnect from wallet extension.
+      provider = null;
+      signer = null;
+      updateWalletUI(false);
+      logToTerminal('Disconnected. Please disconnect from your wallet extension.', 'warn');
+  }
+
+  async function updateWalletUI(isConnected: boolean) {
+      if (isConnected && signer) {
+          const address = await signer.getAddress();
+          const balance = await provider!.getBalance(address);
+          walletStatusSpan.textContent = 'Connected';
+          walletAddressSpan.textContent = `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+          walletBalanceSpan.textContent = `${ethers.formatEther(balance)} ETH`;
+
+          walletInfoDiv.style.display = 'block';
+          connectWalletBtn.style.display = 'none';
+      } else {
+          walletStatusSpan.textContent = 'Disconnected';
+          walletAddressSpan.textContent = 'N/A';
+          walletBalanceSpan.textContent = 'N/A';
+          
+          walletInfoDiv.style.display = 'none';
+          connectWalletBtn.style.display = 'block';
+      }
+  }
+
+  connectWalletBtn.addEventListener('click', connectWallet);
+  disconnectWalletBtn.addEventListener('click', disconnectWallet);
+  
+  // Mnemonic Generator
+  const generateMnemonicBtn = document.getElementById('generateMnemonicBtn')!;
+  const mnemonicStrengthSelect = document.getElementById('mnemonic-strength') as HTMLSelectElement;
+  const mnemonicDisplay = document.getElementById('mnemonic-display')!;
+
+  generateMnemonicBtn.addEventListener('click', () => {
+    const strength = parseInt(mnemonicStrengthSelect.value, 10);
+    const mnemonic = bip39.generateMnemonic(strength);
+    mnemonicDisplay.textContent = mnemonic;
+    mnemonicDisplay.style.display = 'block';
+    logToTerminal(`Generated new ${strength === 128 ? '12-word' : '24-word'} mnemonic.`);
+  });
+
+
+  // ===============================================
+  // DASHBOARD
+  // ===============================================
+
+  // TradingView Widget
+  function loadTradingViewWidget() {
+    new TradingView.widget({
+      "container_id": "tradingview-widget-container",
+      "autosize": true,
+      "symbol": "BITSTAMP:BTCUSD",
+      "interval": "D",
+      "timezone": "Etc/UTC",
+      "theme": "dark",
+      "style": "1",
+      "locale": "en",
+      "toolbar_bg": "#f1f3f6",
+      "enable_publishing": false,
+      "allow_symbol_change": true,
+    });
+    logToTerminal('TradingView widget loaded.', 'ok');
+  }
+
+  // Recurring Tasks
+  const recurringTasksList = document.getElementById('recurring-tasks-list')!;
+  const newRecurringTaskInput = document.getElementById('new-recurring-task') as HTMLInputElement;
+  const addRecurringTaskBtn = document.getElementById('add-recurring-task-btn')!;
+
+  let recurringTasks: string[] = JSON.parse(localStorage.getItem(RECURRING_TASKS_KEY) || '[]');
+
+  function renderRecurringTasks() {
+    recurringTasksList.innerHTML = '';
+    if (recurringTasks.length === 0) {
+      recurringTasksList.innerHTML = '<p class="empty-list-msg">No recurring tasks yet.</p>';
+      return;
+    }
+    recurringTasks.forEach((task, index) => {
+        const taskEl = document.createElement('div');
+        taskEl.className = 'task-item';
+        taskEl.innerHTML = `
+            <span>${task}</span>
+            <button class="delete-btn" data-index="${index}">&times;</button>
+        `;
+        recurringTasksList.appendChild(taskEl);
+    });
+  }
+
+  addRecurringTaskBtn.addEventListener('click', () => {
+    const taskText = newRecurringTaskInput.value.trim();
+    if (taskText) {
+        recurringTasks.push(taskText);
+        localStorage.setItem(RECURRING_TASKS_KEY, JSON.stringify(recurringTasks));
+        newRecurringTaskInput.value = '';
+        renderRecurringTasks();
+        logToTerminal(`Added recurring task: "${taskText}"`);
+    }
+  });
+
+  recurringTasksList.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    if (target.classList.contains('delete-btn')) {
+        const index = parseInt(target.getAttribute('data-index')!, 10);
+        const removedTask = recurringTasks.splice(index, 1)[0];
+        localStorage.setItem(RECURRING_TASKS_KEY, JSON.stringify(recurringTasks));
+        renderRecurringTasks();
+        logToTerminal(`Removed recurring task: "${removedTask}"`, 'warn');
+    }
+  });
+
+
+  // ===============================================
+  // DEX TOOLS
+  // ===============================================
+  const fromTokenInput = document.getElementById('from-token') as HTMLInputElement;
+  const toTokenInput = document.getElementById('to-token') as HTMLInputElement;
+  const leverageSelect = document.getElementById('leverage') as HTMLSelectElement;
+  const swapBtn = document.getElementById('swap-btn')!;
+
+  function saveDexSettings() {
+    localStorage.setItem(FROM_TOKEN_KEY, fromTokenInput.value);
+    localStorage
