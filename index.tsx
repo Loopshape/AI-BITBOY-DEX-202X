@@ -329,53 +329,67 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        const payInput = dexModule.querySelector('.token-input-group:first-of-type input') as HTMLInputElement;
-        const receiveInput = dexModule.querySelector('.token-input-group:last-of-type input') as HTMLInputElement;
-        const payToken = dexModule.querySelector('.token-input-group:first-of-type .token-selector span')?.textContent?.trim();
-        const receiveToken = dexModule.querySelector('.token-input-group:last-of-type .token-selector span')?.textContent?.trim();
-        
-        const payAmount = parseFloat(payInput.value);
-        const receiveAmount = parseFloat(receiveInput.value);
-        
-        if (isNaN(payAmount) || isNaN(receiveAmount) || payAmount <= 0) {
-            showToast('Invalid swap amounts.', 'error');
-            logToTerminal('Swap failed: Invalid amounts.', 'error');
-            return;
-        }
+        (swapBtn as HTMLButtonElement).disabled = true;
+        swapBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Swapping...`;
 
-        if (!payToken || !receiveToken || !tokenBalances[payToken]) {
-            showToast('Invalid token selection.', 'error');
-            logToTerminal('Swap failed: Invalid tokens.', 'error');
-            return;
-        }
-        
-        if (tokenBalances[payToken] < payAmount) {
-            showToast(`Insufficient ${payToken} balance.`, 'error');
-            logToTerminal(`Swap failed: Insufficient ${payToken} balance.`, 'error');
-            return;
-        }
-    
-        // Simulate swap
-        tokenBalances[payToken] -= payAmount;
-        tokenBalances[receiveToken] = (tokenBalances[receiveToken] || 0) + receiveAmount;
-        
-        const message = `Swapped ${payToken} for ${receiveToken}`;
-        logTransaction({
-            type: 'swap',
-            message: message,
-            details: {
-                fromToken: payToken,
-                fromAmount: payAmount,
-                toToken: receiveToken,
-                toAmount: receiveAmount
+        const restoreButton = () => {
+            (swapBtn as HTMLButtonElement).disabled = false;
+            swapBtn.textContent = 'Swap';
+        };
+
+        setTimeout(() => {
+            const payInput = dexModule.querySelector('.token-input-group:first-of-type input') as HTMLInputElement;
+            const receiveInput = dexModule.querySelector('.token-input-group:last-of-type input') as HTMLInputElement;
+            const payToken = dexModule.querySelector('.token-input-group:first-of-type .token-selector span')?.textContent?.trim();
+            const receiveToken = dexModule.querySelector('.token-input-group:last-of-type .token-selector span')?.textContent?.trim();
+            
+            const payAmount = parseFloat(payInput.value);
+            const receiveAmount = parseFloat(receiveInput.value);
+            
+            if (isNaN(payAmount) || isNaN(receiveAmount) || payAmount <= 0) {
+                showToast('Invalid swap amounts.', 'error');
+                logToTerminal('Swap failed: Invalid amounts.', 'error');
+                restoreButton();
+                return;
             }
-        });
-        logToTerminal(`Swapped ${payAmount.toFixed(4)} ${payToken} for ${receiveAmount.toFixed(4)} ${receiveToken}`, 'success');
-        showToast('Swap successful!', 'success');
+
+            if (!payToken || !receiveToken || !tokenBalances[payToken]) {
+                showToast('Invalid token selection.', 'error');
+                logToTerminal('Swap failed: Invalid tokens.', 'error');
+                restoreButton();
+                return;
+            }
+            
+            if (tokenBalances[payToken] < payAmount) {
+                showToast(`Insufficient ${payToken} balance.`, 'error');
+                logToTerminal(`Swap failed: Insufficient ${payToken} balance.`, 'error');
+                restoreButton();
+                return;
+            }
         
-        // Update UI
-        updateBalanceUI();
-        updateWalletBalanceComponents();
+            setTimeout(() => {
+                tokenBalances[payToken] -= payAmount;
+                tokenBalances[receiveToken] = (tokenBalances[receiveToken] || 0) + receiveAmount;
+                
+                const message = `Swapped ${payToken} for ${receiveToken}`;
+                logTransaction({
+                    type: 'swap',
+                    message: message,
+                    details: {
+                        fromToken: payToken,
+                        fromAmount: payAmount,
+                        toToken: receiveToken,
+                        toAmount: receiveAmount
+                    }
+                });
+                logToTerminal(`Swapped ${payAmount.toFixed(4)} ${payToken} for ${receiveAmount.toFixed(4)} ${receiveToken}`, 'success');
+                showToast('Swap successful!', 'success');
+                
+                updateBalanceUI();
+                updateWalletBalanceComponents();
+                restoreButton();
+            }, 1500);
+        }, 50);
     });
     
     // Drag and Drop Functionality
