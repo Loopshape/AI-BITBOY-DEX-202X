@@ -254,6 +254,15 @@
                         <h3>REAL-TIME HEADLINES</h3>
                         <p id="admin-news-item" class="news-item">Fetching latest market intel...</p>
                     </div>
+                    <div class="benchmark-quota">
+                        <h3>BENCHMARK QUOTA</h3>
+                        <div class="quota-slider-container">
+                            <span>PRIVACY</span>
+                            <input type="range" id="admin-benchmark-slider" min="0" max="100" value="50" class="quota-slider">
+                            <span>SECURITY</span>
+                        </div>
+                        <p id="admin-benchmark-value">Privacy 50% / Security 50%</p>
+                    </div>
                 </div>
                 <div id="ai-synthesis-panel" class="admin-panel">
                     <h2 class="admin-panel-title">AI SYNTHESIS CORE</h2>
@@ -264,6 +273,15 @@
                 <button id="admin-synthesize-btn">SYNTHESIZE TRADE DIRECTIVE</button>
             </footer>
         </div>
+    </div>
+
+    <!-- Component Context Menu -->
+    <div id="component-context-menu" class="context-menu" style="display: none;">
+        <ul>
+            <li data-action="edit"><i class="fas fa-sliders-h"></i> Edit Properties</li>
+            <li data-action="duplicate"><i class="fas fa-copy"></i> Duplicate</li>
+            <li data-action="delete"><i class="fas fa-trash-alt"></i> Delete</li>
+        </ul>
     </div>
 
     <script type="module" src="index.tsx"></script>

@@ -18,11 +18,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const adminControlsModal = document.getElementById('admin-controls-modal') as HTMLElement;
     const openAdminControlsBtn = document.getElementById('open-admin-controls-btn') as HTMLElement;
     const closeAdminControlsBtn = adminControlsModal.querySelector('.admin-close-btn') as HTMLElement;
+    const contextMenu = document.getElementById('component-context-menu') as HTMLElement;
 
 
     // State
     let isWalletConnected = false;
     let selectedElement: HTMLElement | null = null;
+    let contextElement: HTMLElement | null = null;
     let aiChat: Chat | null = null;
 
     // --- Gemini AI Initialization ---
@@ -420,6 +422,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const newsItemEl = document.getElementById('admin-news-item') as HTMLElement;
         const directiveOutput = document.getElementById('admin-directive-output') as HTMLElement;
         const synthesizeBtn = document.getElementById('admin-synthesize-btn') as HTMLButtonElement;
+        const benchmarkSlider = document.getElementById('admin-benchmark-slider') as HTMLInputElement;
+        const benchmarkValue = document.getElementById('admin-benchmark-value') as HTMLElement;
         
         let marketDataInterval: number | null = null;
         
@@ -437,7 +441,9 @@ document.addEventListener('DOMContentLoaded', function() {
             volume: 45.2,
             sentiment: 72,
             sentimentText: 'Greed',
-            news: newsHeadlines[0].text
+            news: newsHeadlines[0].text,
+            benchmarkPrivacy: 50,
+            benchmarkSecurity: 50,
         };
 
         function updateMarketData() {
@@ -482,6 +488,17 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
+        benchmarkSlider.addEventListener('input', () => {
+            const securityValue = parseInt(benchmarkSlider.value, 10);
+            const privacyValue = 100 - securityValue;
+            
+            marketState.benchmarkPrivacy = privacyValue;
+            marketState.benchmarkSecurity = securityValue;
+            
+            benchmarkValue.textContent = `Privacy ${privacyValue}% / Security ${securityValue}%`;
+            logToTerminal(`Benchmark quota adjusted: Privacy ${privacyValue}%, Security ${securityValue}%.`);
+        });
+
         synthesizeBtn.addEventListener('click', async () => {
             if (!ai) {
                 showToast('AI Core is offline. Check API Key.', 'error');
@@ -505,6 +522,7 @@ Market Data:
 - 24h Momentum: ${marketState.change.toFixed(2)}%
 - Market Sentiment: ${marketState.sentiment} (${marketState.sentimentText})
 - Key Headline: "${marketState.news}"
+- System Benchmark Quota: Privacy ${marketState.benchmarkPrivacy}% / Security ${marketState.benchmarkSecurity}%
 `;
 
                 const responseStream = await ai.models.generateContentStream({
@@ -683,6 +701,79 @@ Generate only the raw HTML code block. Do not use markdown backticks.`;
     // Control buttons
     resetBtn.addEventListener('click', resetPreview);
 
+    // --- Context Menu Logic ---
+    function hideContextMenu() {
+        contextMenu.style.display = 'none';
+        contextElement = null;
+    }
+    
+    previewArea.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        const targetComponent = (e.target as HTMLElement).closest('.app-component');
+        if (!targetComponent) {
+            hideContextMenu();
+            return;
+        };
+
+        contextElement = targetComponent as HTMLElement;
+        
+        const isDexModule = contextElement.classList.contains('dex-module');
+        const duplicateOption = contextMenu.querySelector('[data-action="duplicate"]') as HTMLElement;
+        const deleteOption = contextMenu.querySelector('[data-action="delete"]') as HTMLElement;
+        
+        if (isDexModule) {
+            duplicateOption.classList.add('disabled');
+            deleteOption.classList.add('disabled');
+        } else {
+            duplicateOption.classList.remove('disabled');
+            deleteOption.classList.remove('disabled');
+        }
+
+        contextMenu.style.left = `${e.clientX}px`;
+        contextMenu.style.top = `${e.clientY}px`;
+        contextMenu.style.display = 'block';
+    });
+
+    contextMenu.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        const actionItem = target.closest('li[data-action]') as HTMLElement;
+        if (!actionItem || !contextElement || actionItem.classList.contains('disabled')) return;
+
+        const action = actionItem.dataset.action;
+
+        switch (action) {
+            case 'edit':
+                selectElement(contextElement);
+                logToTerminal(`Editing properties for component: ${contextElement.dataset.type || 'AI Component'}`);
+                break;
+            case 'duplicate':
+                const clone = contextElement.cloneNode(true) as HTMLElement;
+                clone.classList.remove('selected');
+                contextElement.insertAdjacentElement('afterend', clone);
+                logToTerminal(`Component duplicated.`);
+                break;
+            case 'delete':
+                const componentType = contextElement.dataset.type || 'AI Component';
+                contextElement.remove();
+                logToTerminal(`Component "${componentType}" removed.`, 'warning');
+                if (selectedElement === contextElement) {
+                    selectedElement = null;
+                    propertiesEditor.innerHTML = '<p class="properties-placeholder">Select a DEX element to edit its properties.</p>';
+                }
+                if (previewArea.querySelectorAll('.app-component:not(.dex-module), .generated-component').length === 0) {
+                    if (previewPlaceholder) previewPlaceholder.style.display = 'flex';
+                }
+                break;
+        }
+
+        hideContextMenu();
+    });
+
+    window.addEventListener('click', (e) => {
+        if (!contextMenu.contains(e.target as Node)) {
+            hideContextMenu();
+        }
+    });
 
     // Initial state
     initializeAdminControls();
