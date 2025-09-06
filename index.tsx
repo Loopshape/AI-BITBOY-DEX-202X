@@ -1,4 +1,6 @@
 
+
+
 import * as bip39 from 'bip39';
 import { Web3Modal } from '@web3modal/standalone';
 import { ethers } from 'https://esm.run/ethers';
@@ -349,6 +351,19 @@ document.addEventListener('DOMContentLoaded', () => {
   function removeProviderEvents(provider: any) {
     provider.removeListener('accountsChanged', handleAccountsChanged);
     provider.removeListener('disconnect', handleDisconnect);
+  }
+
+  // Fix: Define the missing updateTradeButtonsState function.
+  // This function is called on wallet connect/disconnect to update the UI.
+  // It assumes that trade execution buttons have a 'trade-action-btn' class.
+  function updateTradeButtonsState() {
+    const isWalletConnected = !!walletAddress;
+    const tradeButtons = document.querySelectorAll('.trade-action-btn') as NodeListOf<HTMLButtonElement>;
+
+    tradeButtons.forEach(button => {
+        button.disabled = !isWalletConnected;
+        button.title = isWalletConnected ? '' : 'Connect your wallet to trade.';
+    });
   }
 
   async function connectWallet(connector: 'metaMask' | 'walletConnect' | 'cli') {
@@ -726,4 +741,69 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function saveKanbanTasks() {
         localStorage.setItem(KANBAN_TASKS_KEY, JSON.stringify(kanbanTasks));
-    
+    }
+
+    // ===============================================
+    // NFT CAROUSEL
+    // ===============================================
+    function setupNftCarousel() {
+        const carousel = document.querySelector('.carousel') as HTMLElement;
+        const prevButton = document.getElementById('carousel-prev-btn');
+        const nextButton = document.getElementById('carousel-next-btn');
+        if (!carousel || !prevButton || !nextButton) return;
+
+        const placeholderNfts = [
+            { id: 1, title: "Cyberscape #42", creator: "0xNeo", image: "https://picsum.photos/seed/a/400/300" },
+            { id: 2, title: "Glitch Orb", creator: "GlitchArt", image: "https://picsum.photos/seed/b/400/300" },
+            { id: 3, title: "Neon Wanderer", creator: "Aris", image: "https://picsum.photos/seed/c/400/300" },
+            { id: 4, title: "Digital Relic", creator: "Archive.ETH", image: "https://picsum.photos/seed/d/400/300" },
+            { id: 5, title: "Chrome Heart", creator: "Metallo", image: "https://picsum.photos/seed/e/400/300" },
+            { id: 6, title: "Aetherform", creator: "Etherea", image: "https://picsum.photos/seed/f/400/300" },
+            { id: 7, title: "Singularity", creator: "Unit731", image: "https://picsum.photos/seed/g/400/300" },
+            { id: 8, title: "Retro Future", creator: "8-Bit", image: "https://picsum.photos/seed/h/400/300" },
+            { id: 9, title: "Data Stream", creator: "FlowViz", image: "https://picsum.photos/seed/i/400/300" },
+        ];
+        
+        const cellCount = placeholderNfts.length;
+        const theta = 360 / cellCount;
+        const radius = Math.round((210 / 2) / Math.tan(Math.PI / cellCount));
+        let selectedIndex = 0;
+
+        // Populate carousel
+        placeholderNfts.forEach((nft, i) => {
+            const cell = document.createElement('div');
+            cell.className = 'carousel-item';
+            const angle = theta * i;
+            cell.style.transform = `rotateY(${angle}deg) translateZ(${radius}px)`;
+            
+            cell.innerHTML = `
+                <img src="${nft.image}" alt="${nft.title}">
+                <div class="carousel-item-info">
+                    <h5>${nft.title}</h5>
+                    <p class="small mono">by ${nft.creator}</p>
+                </div>
+            `;
+            carousel.appendChild(cell);
+        });
+
+        function rotateCarousel() {
+            const angle = theta * selectedIndex * -1;
+            carousel.style.transform = `translateZ(-${radius}px) rotateY(${angle}deg)`;
+        }
+
+        prevButton.addEventListener('click', () => {
+            selectedIndex--;
+            rotateCarousel();
+        });
+
+        nextButton.addEventListener('click', () => {
+            selectedIndex++;
+            rotateCarousel();
+        });
+
+        // Initial rotation
+        rotateCarousel();
+    }
+    setupNftCarousel();
+
+});

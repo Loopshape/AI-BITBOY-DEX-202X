@@ -1,4 +1,5 @@
 
+
 /* ================== FULL CSS RESET + ADAPTER ================== */
 
 /* Reset default browser styles */
@@ -135,4 +136,76 @@ canvas.fullscreen-adapter {
 .parallax-layer:nth-child(5) { z-index: -8; background: radial-gradient(circle at 60% 40%, rgba(100, 13, 95,0.01) 0%, transparent 55%); }
 .parallax-layer:nth-child(6) { z-index: -7; background: radial-gradient(circle at 90% 90%, rgba(247, 141, 96,0.01) 0%, transparent 50%); }
 .parallax-layer:nth-child(7) { z-index: -6; background: radial-gradient(circle at 10% 10%, rgba(234, 34, 100,0.02) 0%, transparent 80%); }
-.parallax-layer:nth-child(8) { z-index: -5; background: radial
+.parallax-layer:nth-child(8) { z-index: -5; background: radial-gradient(circle at 50% 90%, rgba(247, 141, 96,0.01) 0%, transparent 70%); }
+
+/* ================== NFT CAROUSEL STYLES ================== */
+#nft-carousel-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  min-height: 250px;
+}
+
+.carousel-scene {
+  position: relative;
+  width: 210px;
+  height: 200px;
+  perspective: 1000px;
+  margin: 20px auto;
+}
+
+.carousel {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  transform-style: preserve-3d;
+  transition: transform 0.8s cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+.carousel-item {
+  position: absolute;
+  width: 210px;
+  height: 160px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--color-primary);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  color: var(--color-text);
+  box-shadow: 0 0 10px var(--color-primary);
+  -webkit-backface-visibility: hidden; /* For Safari */
+  backface-visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.carousel-item:hover {
+    transform: scale(1.05) !important;
+    box-shadow: 0 0 20px var(--color-primary);
+}
+
+.carousel-item img {
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+  opacity: 0.9;
+}
+
+.carousel-item-info {
+    padding: 8px;
+    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+}
+
+.carousel-item-info h5 {
+    margin: 0 0 4px 0;
+    font-size: 1rem;
+    color: var(--color-secondary);
+    text-shadow: var(--glow-secondary);
+}
+
+.carousel-controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
