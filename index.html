@@ -253,12 +253,10 @@ body {
 }
 
 .preview-component {
-  padding: 15px;
+  /* Default padding and border are now set via JS inline styles */
   background: #252836;
-  border-radius: 8px;
   min-width: 120px;
   text-align: center;
-  border: 2px dashed rgba(110, 142, 251, 0.5);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -271,13 +269,11 @@ body {
 }
 
 .preview-component.selected {
-  border: 2px solid var(--accent-color-2);
+  border: 2px solid var(--accent-color-2) !important; /* Use important to override inline style */
   box-shadow: var(--glow-orange);
 }
 
 .preview-component:hover {
-  border-color: var(--accent-color);
-  background: #2a2d40;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
@@ -303,6 +299,7 @@ body {
   cursor: pointer;
   opacity: 0;
   transition: var(--transition);
+  z-index: 10;
 }
 
 .preview-component:hover .remove-btn {
@@ -315,6 +312,17 @@ body {
 }
 #properties-panel.active {
     display: flex;
+}
+
+#properties-form h4 {
+    color: var(--accent-color-2);
+    margin-top: 20px;
+    margin-bottom: 15px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+#properties-form h4:first-child {
+    margin-top: 0;
 }
 
 .property-group {
@@ -1039,11 +1047,18 @@ function addComponentToPreview(type, x, y) {
   componentEl.id = id;
   componentEl.dataset.type = type;
 
+  const baseProperties = {
+    padding: '15px',
+    margin: '0px',
+    border: '2px dashed rgba(110, 142, 251, 0.5)',
+    borderRadius: '8px',
+  };
+
   const componentData = {
     id: id,
     type: type,
     element: componentEl,
-    properties: {}
+    properties: { ...baseProperties }
   };
   
   // Create remove button
@@ -1066,19 +1081,19 @@ function addComponentToPreview(type, x, y) {
 
   switch(type) {
     case 'button':
-      componentData.properties = { text: 'Web3 Button', bgColor: '#6e8efb', textColor: '#ffffff' };
+      Object.assign(componentData.properties, { text: 'Web3 Button', bgColor: '#6e8efb', textColor: '#ffffff' });
       contentSpan.innerHTML = `<i class="fas fa-hand-pointer"></i><span data-prop="text">${componentData.properties.text}</span>`;
       componentEl.style.backgroundColor = componentData.properties.bgColor;
       componentEl.style.color = componentData.properties.textColor;
       break;
     case 'input':
-      componentData.properties = { placeholder: 'Enter text here', bgColor: '#252836' };
+      Object.assign(componentData.properties, { placeholder: 'Enter text here', bgColor: '#252836' });
       contentSpan.innerHTML = `<i class="fas fa-font"></i><input type="text" placeholder="${componentData.properties.placeholder}" style="background-color: ${componentData.properties.bgColor}; color: white; border: none; text-align: center; pointer-events: none;" readonly>`;
       break;
     case 'card':
-        componentData.properties = { title: 'Info Card', content: 'This is a sample card.' };
-        contentSpan.innerHTML = `<div style="text-align: left; width: 100%;"><h4 data-prop="title">${componentData.properties.title}</h4><p data-prop="content">${componentData.properties.content}</p></div>`;
-        break;
+      Object.assign(componentData.properties, { title: 'Info Card', content: 'This is a sample card.' });
+      contentSpan.innerHTML = `<div style="text-align: left; width: 100%;"><h4 data-prop="title">${componentData.properties.title}</h4><p data-prop="content">${componentData.properties.content}</p></div>`;
+      break;
     case 'slider':
       contentSpan.innerHTML = '<i class="fas fa-sliders-h"></i><span>Range Slider</span>';
       break;
@@ -1095,6 +1110,12 @@ function addComponentToPreview(type, x, y) {
       contentSpan.innerHTML = '<i class="fas fa-chart-bar"></i><span>Chart</span>';
       break;
   }
+  
+  // Apply layout styles
+  componentEl.style.padding = componentData.properties.padding;
+  componentEl.style.margin = componentData.properties.margin;
+  componentEl.style.border = componentData.properties.border;
+  componentEl.style.borderRadius = componentData.properties.borderRadius;
   
   componentEl.appendChild(contentSpan);
   componentEl.appendChild(removeBtn);
@@ -1179,14 +1200,17 @@ function renderPropertiesPanel() {
 
     propertiesPanel.classList.add('active');
     propertiesPlaceholder.style.display = 'none';
-    propertiesForm.innerHTML = '';
 
     const component = projectComponents.find(c => c.id === selectedComponentId);
     if (!component) return;
 
+    let componentSpecificControls = '';
+    const hasSpecificProps = ['button', 'input', 'card'].includes(component.type);
+
     switch(component.type) {
         case 'button':
-            propertiesForm.innerHTML = `
+            componentSpecificControls = `
+                <h4>Component Properties</h4>
                 <div class="property-group">
                     <label for="prop-text">Button Text</label>
                     <input type="text" id="prop-text" value="${component.properties.text}">
@@ -1200,12 +1224,10 @@ function renderPropertiesPanel() {
                     <input type="color" id="prop-textColor" value="${component.properties.textColor}">
                 </div>
             `;
-            document.getElementById('prop-text').addEventListener('input', (e) => updateComponentProperty('text', e.target.value));
-            document.getElementById('prop-bgColor').addEventListener('input', (e) => updateComponentProperty('bgColor', e.target.value));
-            document.getElementById('prop-textColor').addEventListener('input', (e) => updateComponentProperty('textColor', e.target.value));
             break;
         case 'input':
-            propertiesForm.innerHTML = `
+            componentSpecificControls = `
+                <h4>Component Properties</h4>
                 <div class="property-group">
                     <label for="prop-placeholder">Placeholder</label>
                     <input type="text" id="prop-placeholder" value="${component.properties.placeholder}">
@@ -1215,11 +1237,10 @@ function renderPropertiesPanel() {
                     <input type="color" id="prop-bgColor" value="${component.properties.bgColor}">
                 </div>
             `;
-            document.getElementById('prop-placeholder').addEventListener('input', (e) => updateComponentProperty('placeholder', e.target.value));
-            document.getElementById('prop-bgColor').addEventListener('input', (e) => updateComponentProperty('bgColor', e.target.value));
             break;
         case 'card':
-            propertiesForm.innerHTML = `
+            componentSpecificControls = `
+                <h4>Component Properties</h4>
                 <div class="property-group">
                     <label for="prop-title">Title</label>
                     <input type="text" id="prop-title" value="${component.properties.title}">
@@ -1229,12 +1250,44 @@ function renderPropertiesPanel() {
                     <textarea id="prop-content">${component.properties.content}</textarea>
                 </div>
             `;
-            document.getElementById('prop-title').addEventListener('input', (e) => updateComponentProperty('title', e.target.value));
-            document.getElementById('prop-content').addEventListener('input', (e) => updateComponentProperty('content', e.target.value));
             break;
-        default:
-            propertiesForm.innerHTML = '<p>No editable properties for this component.</p>';
     }
+
+    const stylingControls = `
+        <h4>Layout & Style</h4>
+        <div class="property-group">
+            <label for="prop-padding">Padding</label>
+            <input type="text" id="prop-padding" value="${component.properties.padding}">
+        </div>
+        <div class="property-group">
+            <label for="prop-margin">Margin</label>
+            <input type="text" id="prop-margin" value="${component.properties.margin}">
+        </div>
+        <div class="property-group">
+            <label for="prop-border">Border</label>
+            <input type="text" id="prop-border" value="${component.properties.border}">
+        </div>
+        <div class="property-group">
+            <label for="prop-borderRadius">Border Radius</label>
+            <input type="text" id="prop-borderRadius" value="${component.properties.borderRadius}">
+        </div>
+    `;
+
+    let finalHtml = '';
+    if (hasSpecificProps) {
+        finalHtml += componentSpecificControls;
+    } else {
+        finalHtml += '<p>No specific properties for this component.</p>';
+    }
+    finalHtml += stylingControls;
+    propertiesForm.innerHTML = finalHtml;
+    
+    propertiesForm.querySelectorAll('input, textarea').forEach(input => {
+        const prop = input.id.replace('prop-', '');
+        if (prop) {
+            input.addEventListener('input', (e) => updateComponentProperty(prop, e.target.value));
+        }
+    });
 }
 
 function updateComponentProperty(prop, value) {
@@ -1244,8 +1297,15 @@ function updateComponentProperty(prop, value) {
 
     component.properties[prop] = value;
     
-    // Update the element in preview
     const el = component.element;
+    
+    // Update general layout properties
+    if (prop === 'padding') el.style.padding = value;
+    if (prop === 'margin') el.style.margin = value;
+    if (prop === 'border') el.style.border = value;
+    if (prop === 'borderRadius') el.style.borderRadius = value;
+    
+    // Update component-specific properties
     switch(component.type) {
         case 'button':
             if (prop === 'text') el.querySelector('[data-prop="text"]').textContent = value;
@@ -1255,7 +1315,10 @@ function updateComponentProperty(prop, value) {
         case 'input':
             const inputEl = el.querySelector('input');
             if (prop === 'placeholder') inputEl.placeholder = value;
-            if (prop === 'bgColor') inputEl.style.backgroundColor = value;
+            if (prop === 'bgColor') {
+                el.style.backgroundColor = value;
+                inputEl.style.backgroundColor = value;
+            }
             break;
         case 'card':
             if (prop === 'title') el.querySelector('[data-prop="title"]').textContent = value;
@@ -1338,10 +1401,7 @@ function generateProjectCode() {
     }
     .component {
       position: absolute;
-      padding: 15px;
-      border-radius: 8px;
-      background: #1a1b26;
-      border: 1px solid #6e8efb;
+      /* Default styles are overridden by inline styles */
     }
   </style>
 </head>
@@ -1355,30 +1415,32 @@ function generateProjectCode() {
 
   projectComponents.forEach(comp => {
     let positionStyle = `left: ${comp.x}px; top: ${comp.y}px;`;
-    let customStyle = '';
-
+    let layoutStyle = `padding: ${comp.properties.padding}; margin: ${comp.properties.margin}; border: ${comp.properties.border}; border-radius: ${comp.properties.borderRadius};`;
+    
     switch(comp.type) {
       case 'button':
-        customStyle = `background-color: ${comp.properties.bgColor}; color: ${comp.properties.textColor}; border: none; border-radius: 5px; cursor: pointer; padding: 10px 20px;`;
+        let btnContainerStyle = `background-color: ${comp.properties.bgColor};`;
+        let innerBtnStyle = `background: transparent; color: ${comp.properties.textColor}; border: none; cursor: pointer; width: 100%; height: 100%; font-size: inherit; font-family: inherit;`;
         code += `
-    <div class="component" style="${positionStyle}">
-      <button style="${customStyle}">
+    <div class="component" style="${positionStyle} ${layoutStyle} ${btnContainerStyle}">
+      <button style="${innerBtnStyle}">
         ${comp.properties.text}
       </button>
     </div>
 `;
         break;
       case 'input':
-        customStyle = `background: ${comp.properties.bgColor}; color: white; padding: 10px; width: 100%; border-radius: 5px; border: 1px solid #6e8efb;`;
+        let inputContainerStyle = `background-color: ${comp.properties.bgColor};`;
+        let innerInputStyle = `background: transparent; color: white; width: 100%; height: 100%; border: none; text-align: center; font-size: inherit; font-family: inherit;`;
         code += `
-    <div class="component" style="${positionStyle}">
-      <input type="text" placeholder="${comp.properties.placeholder}" style="${customStyle}">
+    <div class="component" style="${positionStyle} ${layoutStyle} ${inputContainerStyle}">
+      <input type="text" placeholder="${comp.properties.placeholder}" style="${innerInputStyle}">
     </div>
 `;
         break;
       case 'card':
         code += `
-    <div class="component" style="${positionStyle} max-width: 300px;">
+    <div class="component" style="${positionStyle} ${layoutStyle} background: #252836;">
       <h3>${comp.properties.title}</h3>
       <p>${comp.properties.content}</p>
     </div>
@@ -1386,7 +1448,7 @@ function generateProjectCode() {
         break;
       default:
         code += `
-    <div class="component" style="${positionStyle}">
+    <div class="component" style="${positionStyle} ${layoutStyle} background: #252836;">
       <h3>${comp.type.charAt(0).toUpperCase() + comp.type.slice(1)} Component</h3>
       <p>This is a ${comp.type} component.</p>
     </div>
@@ -1491,6 +1553,12 @@ function recreateComponentFromData(data) {
     componentEl.dataset.type = type;
     componentEl.style.left = `${x}px`;
     componentEl.style.top = `${y}px`;
+    
+    // Apply layout styles from saved data, with fallbacks for older layouts
+    componentEl.style.padding = properties.padding || '15px';
+    componentEl.style.margin = properties.margin || '0px';
+    componentEl.style.border = properties.border || '2px dashed rgba(110, 142, 251, 0.5)';
+    componentEl.style.borderRadius = properties.borderRadius || '8px';
 
     const componentData = {
         id: id,
@@ -1526,6 +1594,7 @@ function recreateComponentFromData(data) {
             break;
         case 'input':
             contentSpan.innerHTML = `<i class="fas fa-font"></i><input type="text" placeholder="${properties.placeholder}" style="background-color: ${properties.bgColor}; color: white; border: none; text-align: center; pointer-events: none;" readonly>`;
+            componentEl.style.backgroundColor = properties.bgColor;
             break;
         case 'card':
             contentSpan.innerHTML = `<div style="text-align: left; width: 100%;"><h4 data-prop="title">${properties.title}</h4><p data-prop="content">${properties.content}</p></div>`;
