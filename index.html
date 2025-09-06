@@ -95,7 +95,7 @@
                     </div>
                     <div class="component-item" data-type="ai-assistant" draggable="true">
                         <div class="component-icon"><i class="fas fa-robot"></i></div>
-                        <div><h3>AI Assistant</h3><p>Crypto knowledge bot</p></div>
+                        <div><h3>AI Assistant</h3><p>Voice-enabled crypto bot</p></div>
                     </div>
 
                     <h3 class="panel-subtitle">Fundamental Elements</h3>
@@ -114,6 +114,14 @@
                     <div class="component-item" data-type="data-analysis" draggable="true">
                         <div class="component-icon"><i class="fas fa-brain"></i></div>
                         <div><h3>Data Analysis</h3><p>Market analysis tools</p></div>
+                    </div>
+                     <div class="component-item" data-type="sentinel-protocol" draggable="true">
+                        <div class="component-icon"><i class="fas fa-shield-halved"></i></div>
+                        <div><h3>Sentinel Protocol Hub</h3><p>Staking, Governance & Alpha</p></div>
+                    </div>
+                    <div class="component-item" data-type="entropy-parser" draggable="true">
+                        <div class="component-icon"><i class="fas fa-atom"></i></div>
+                        <div><h3>Entropy Parser</h3><p>Analyze data streams</p></div>
                     </div>
                 </div>
             </aside>
@@ -251,39 +259,39 @@
                         </div>
                     </div>
                     <div class="news-feed">
-                        <h3>REAL-TIME HEADLINES</h3>
-                        <p id="admin-news-item" class="news-item">Fetching latest market intel...</p>
+                        <h3>KEY HEADLINE</h3>
+                        <p id="admin-news-item" class="news-item">LOADING LATEST INTEL...</p>
                     </div>
                     <div class="benchmark-quota">
-                        <h3>BENCHMARK QUOTA</h3>
+                        <h3>SYSTEM BENCHMARK QUOTA</h3>
                         <div class="quota-slider-container">
-                            <span>PRIVACY</span>
-                            <input type="range" id="admin-benchmark-slider" min="0" max="100" value="50" class="quota-slider">
-                            <span>SECURITY</span>
+                           <span>PRIVACY</span>
+                           <input type="range" min="0" max="100" value="50" class="quota-slider" id="admin-benchmark-slider">
+                           <span>SECURITY</span>
                         </div>
                         <p id="admin-benchmark-value">Privacy 50% / Security 50%</p>
                     </div>
                 </div>
                 <div id="ai-synthesis-panel" class="admin-panel">
-                    <h2 class="admin-panel-title">AI SYNTHESIS CORE</h2>
-                    <div id="admin-directive-output" class="placeholder">Awaiting synthesis command...</div>
+                    <h2 class="admin-panel-title">AI DIRECTIVE SYNTHESIS</h2>
+                    <div id="admin-directive-output" class="placeholder">Awaiting synthesis command... Standby for market analysis and actionable directives.</div>
                 </div>
             </main>
             <footer class="admin-footer">
-                <button id="admin-synthesize-btn">SYNTHESIZE TRADE DIRECTIVE</button>
+                <button id="admin-synthesize-btn">SYNTHESIZE DIRECTIVE</button>
             </footer>
         </div>
     </div>
 
-    <!-- Component Context Menu -->
-    <div id="component-context-menu" class="context-menu" style="display: none;">
+    <!-- Right-click Context Menu -->
+    <div class="context-menu" id="component-context-menu" style="display: none;">
         <ul>
-            <li data-action="edit"><i class="fas fa-sliders-h"></i> Edit Properties</li>
-            <li data-action="duplicate"><i class="fas fa-copy"></i> Duplicate</li>
+            <li data-action="edit"><i class="fas fa-pencil-alt"></i> Edit Properties</li>
+            <li data-action="duplicate"><i class="fas fa-clone"></i> Duplicate</li>
             <li data-action="delete"><i class="fas fa-trash-alt"></i> Delete</li>
         </ul>
     </div>
-
+    
     <script type="module" src="index.tsx"></script>
 </body>
 </html>

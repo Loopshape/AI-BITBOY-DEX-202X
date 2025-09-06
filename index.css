@@ -443,9 +443,9 @@ header {
 }
 
 .app-component h3 {
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid rgba(247, 141, 96, 0.3);
+    margin: 0;
+    padding: 0;
+    border: none;
     color: var(--secondary);
     font-size: 1.1rem;
     display: flex;
@@ -630,6 +630,66 @@ header {
 }
 
 /* AI Assistant Component */
+.ai-assistant-component .ai-assistant-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(247, 141, 96, 0.3);
+}
+
+.ai-assistant-component .ai-assistant-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ai-assistant-component .tts-toggle {
+    position: relative;
+    display: inline-block;
+    width: 34px;
+    height: 20px;
+}
+.ai-assistant-component .tts-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.ai-assistant-component .tts-toggle .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #4a5568;
+    transition: .4s;
+    border-radius: 20px;
+}
+.ai-assistant-component .tts-toggle .slider:before {
+    position: absolute;
+    content: "";
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+.ai-assistant-component .tts-toggle input:checked + .slider {
+    background-color: var(--secondary);
+}
+.ai-assistant-component .tts-toggle input:checked + .slider:before {
+    transform: translateX(14px);
+}
+
+.ai-assistant-component .tts-status-icon {
+    color: var(--secondary);
+}
+
+
 .ai-assistant-component .ai-chat-messages {
     height: 220px;
     overflow-y: auto;
@@ -660,6 +720,9 @@ header {
     max-width: 85%;
     line-height: 1.5;
     word-wrap: break-word;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .ai-message {
@@ -667,6 +730,15 @@ header {
     color: var(--light);
     align-self: flex-start;
     border-bottom-left-radius: 2px;
+}
+.speaking-indicator {
+    color: var(--secondary);
+    animation: pulse-glow 1.5s infinite;
+}
+
+@keyframes pulse-glow {
+    0%, 100% { opacity: 0.7; text-shadow: 0 0 4px var(--secondary); }
+    50% { opacity: 1; text-shadow: 0 0 10px var(--secondary); }
 }
 
 .user-message {
@@ -726,19 +798,31 @@ header {
     border: none;
     border-radius: 8px;
     color: var(--dark);
-    padding: 0 15px;
+    width: 42px;
     cursor: pointer;
-    font-size: 1.2rem;
-    transition: background-color 0.3s;
+    font-size: 1.1rem;
+    transition: all 0.3s;
+    flex-shrink: 0;
 }
-
 .ai-chat-input-form button:hover {
     background: var(--accent);
 }
-
 .ai-chat-input-form button:disabled {
     background: #9ca3af;
     cursor: not-allowed;
+}
+
+.ai-chat-input-form button.mic-btn {
+    background: var(--accent);
+    color: var(--light);
+}
+.ai-chat-input-form button.mic-btn:hover {
+    background: var(--primary);
+}
+.ai-chat-input-form button.mic-btn.listening {
+    background-color: var(--error);
+    box-shadow: 0 0 15px var(--error);
+    animation: pulse 1.5s infinite;
 }
 
 /* Fundamental Components Styling */
@@ -824,6 +908,103 @@ header {
     font-size: 1.5rem;
     margin-bottom: 8px;
 }
+
+/* Entropy Parser Component */
+.entropy-parser-component .parser-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+}
+
+.entropy-parser-component .entropy-input,
+.entropy-parser-component .entropy-output {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 15px;
+    border: 1px solid var(--accent);
+}
+
+.entropy-parser-component h4 {
+    font-size: 0.8rem;
+    color: var(--accent);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: center;
+}
+
+.entropy-parser-component .entropy-visualizer {
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+    height: 40px;
+}
+
+.entropy-parser-component .entropy-bar {
+    width: 10px;
+    background: var(--secondary);
+    animation: entropy-flux 1.5s ease-in-out infinite alternate;
+}
+
+.entropy-parser-component .entropy-bar:nth-child(2) { animation-delay: 0.2s; }
+.entropy-parser-component .entropy-bar:nth-child(3) { animation-delay: 0.4s; }
+.entropy-parser-component .entropy-bar:nth-child(4) { animation-delay: 0.6s; }
+
+@keyframes entropy-flux {
+    from { height: 5%; opacity: 0.5; }
+    to { height: 100%; opacity: 1; }
+}
+
+.entropy-parser-component .parser-core {
+    color: var(--secondary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    margin: 10px 0;
+}
+
+.entropy-parser-component .parser-core i {
+    font-size: 2.5rem;
+    animation: spin 4s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.entropy-parser-component .parser-core span {
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+}
+
+.entropy-parser-component .entropy-output .signal-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(110, 142, 251, 0.2);
+}
+.entropy-parser-component .entropy-output .signal-item:last-child {
+    border-bottom: none;
+}
+
+.entropy-parser-component .signal-item span:first-child {
+    color: var(--light);
+    opacity: 0.8;
+}
+
+.entropy-parser-component .signal-value {
+    font-weight: bold;
+    color: var(--secondary);
+}
+
+.entropy-parser-component .signal-value.high { color: var(--success); }
+.entropy-parser-component .signal-value.med { color: var(--warning); }
+
 
 /* Admin Controls Modal */
 #admin-controls-modal {

@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Chat } from "@google/genai";
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -143,15 +144,25 @@ document.addEventListener('DOMContentLoaded', function() {
             case 'ai-assistant':
                  componentHTML = `
                     <div class="app-component ai-assistant-component" data-type="ai-assistant">
-                        <h3><i class="fas fa-robot"></i> AI Assistant</h3>
+                        <div class="ai-assistant-header">
+                             <h3><i class="fas fa-robot"></i> AI Assistant</h3>
+                             <div class="ai-assistant-controls">
+                                 <label class="tts-toggle">
+                                     <input type="checkbox" checked>
+                                     <span class="slider"></span>
+                                 </label>
+                                 <i class="fas fa-volume-up tts-status-icon"></i>
+                             </div>
+                        </div>
                         <div class="component-content">
                             <div class="ai-chat-messages">
                                 <div class="ai-message">
-                                    Hello! I'm your crypto expert assistant. Ask me anything about Web3, tokens, or DeFi.
+                                    <span class="ai-message-text">Hello! I'm your crypto expert assistant. Ask me anything about Web3, tokens, or DeFi.</span>
                                 </div>
                             </div>
                             <form class="ai-chat-input-form">
                                 <input type="text" placeholder="Ask a question..." required>
+                                <button type="button" class="mic-btn"><i class="fas fa-microphone"></i></button>
                                 <button type="submit"><i class="fas fa-paper-plane"></i></button>
                             </form>
                         </div>
@@ -228,7 +239,116 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 `;
                 break;
-            // other components can be added here
+            case 'entropy-parser':
+                componentHTML = `
+                    <div class="app-component entropy-parser-component" data-type="entropy-parser">
+                        <h3><i class="fas fa-atom"></i> Entropy Parser</h3>
+                        <div class="parser-container">
+                            <div class="entropy-input">
+                                <h4>RAW ENTROPY STREAM</h4>
+                                <div class="entropy-visualizer">
+                                    <div class="entropy-bar"></div>
+                                    <div class="entropy-bar"></div>
+                                    <div class="entropy-bar"></div>
+                                    <div class="entropy-bar"></div>
+                                </div>
+                            </div>
+                            <div class="parser-core">
+                                <i class="fas fa-cogs"></i>
+                                <span>PARSING</span>
+                            </div>
+                            <div class="entropy-output">
+                                <h4>PARSED SIGNALS</h4>
+                                <div class="signal-item">
+                                    <span>Signal Strength</span>
+                                    <span class="signal-value high">92.7%</span>
+                                </div>
+                                <div class="signal-item">
+                                    <span>Pattern Detected</span>
+                                    <span class="signal-value">VOL-SPIKE</span>
+                                </div>
+                                 <div class="signal-item">
+                                    <span>Confidence</span>
+                                    <span class="signal-value med">78.4%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                break;
+            case 'sentinel-protocol':
+                componentHTML = `
+                    <div class="app-component sentinel-protocol-component" data-type="sentinel-protocol">
+                        <h3><i class="fas fa-shield-halved"></i> Sentinel Protocol Hub</h3>
+                        <div class="sentinel-tabs">
+                            <button class="sentinel-tab active" data-tab="staking">Staking</button>
+                            <button class="sentinel-tab" data-tab="governance">Governance</button>
+                            <button class="sentinel-tab" data-tab="alpha">Alpha Oracles</button>
+                        </div>
+                        <div class="sentinel-content">
+                            <div class="sentinel-tab-content active" data-tab-content="staking">
+                                <h4>Staking Dashboard</h4>
+                                <div class="staking-metrics">
+                                    <div class="metric-item">
+                                        <span>Total Value Locked</span>
+                                        <p>$125.4M</p>
+                                    </div>
+                                    <div class="metric-item">
+                                        <span>Your Stake</span>
+                                        <p>0.00 SNTL</p>
+                                    </div>
+                                    <div class="metric-item">
+                                        <span>APR</span>
+                                        <p>12.5%</p>
+                                    </div>
+                                </div>
+                                <div class="staking-actions">
+                                    <button class="btn btn-primary">Stake SNTL</button>
+                                    <button class="btn btn-secondary">Unstake</button>
+                                </div>
+                            </div>
+                            <div class="sentinel-tab-content" data-tab-content="governance">
+                                <h4>Active Governance Proposals</h4>
+                                <div class="proposal-list">
+                                    <div class="proposal-item">
+                                        <p class="proposal-title">SIP-042: Increase validator rewards by 5%</p>
+                                        <div class="proposal-status active-voting">Voting Active</div>
+                                        <div class="proposal-progress">
+                                            <div class="progress-bar" style="width: 65%;"></div>
+                                        </div>
+                                    </div>
+                                    <div class="proposal-item">
+                                        <p class="proposal-title">SIP-041: Integrate new cross-chain bridge</p>
+                                         <div class="proposal-status passed">Passed</div>
+                                         <div class="proposal-progress">
+                                            <div class="progress-bar" style="width: 82%;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="sentinel-tab-content" data-tab-content="alpha">
+                                <h4>Market Sentiment Analysis</h4>
+                                <div class="sentiment-module">
+                                    <div class="sentiment-gauge">
+                                        <div class="gauge-dial"></div>
+                                        <div class="gauge-needle"></div>
+                                        <div class="gauge-center"></div>
+                                        <div class="sentiment-score-display">
+                                            <span class="sentiment-score">72</span>
+                                            <span class="sentiment-label">Greed</span>
+                                        </div>
+                                    </div>
+                                    <div class="sentiment-drivers">
+                                         <h5>Key Drivers:</h5>
+                                         <ul class="drivers-list">
+                                            <!-- Drivers will be populated by JS -->
+                                         </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                break;
         }
         
         if (componentHTML) {
@@ -238,6 +358,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 const newAssistant = previewArea.querySelector('.ai-assistant-component:last-child');
                 if (newAssistant) {
                     setupAIAssistant(newAssistant as HTMLElement);
+                }
+            } else if (type === 'sentinel-protocol') {
+                const newSentinel = previewArea.querySelector('.sentinel-protocol-component:last-child');
+                if (newSentinel) {
+                    setupSentinelProtocol(newSentinel as HTMLElement);
                 }
             }
         }
@@ -338,20 +463,26 @@ document.addEventListener('DOMContentLoaded', function() {
     
     async function setupAIAssistant(assistantElement: HTMLElement) {
         const form = assistantElement.querySelector('.ai-chat-input-form') as HTMLFormElement;
-        const input = assistantElement.querySelector('input') as HTMLInputElement;
-        const button = assistantElement.querySelector('button') as HTMLButtonElement;
+        const input = assistantElement.querySelector('input[type="text"]') as HTMLInputElement;
+        const submitButton = assistantElement.querySelector('button[type="submit"]') as HTMLButtonElement;
         const messagesContainer = assistantElement.querySelector('.ai-chat-messages') as HTMLElement;
-
+        const micBtn = assistantElement.querySelector('.mic-btn') as HTMLButtonElement;
+        const ttsToggle = assistantElement.querySelector('.tts-toggle input') as HTMLInputElement;
+        const ttsStatusIcon = assistantElement.querySelector('.tts-status-icon') as HTMLElement;
+        
+        let isTTSEnabled = ttsToggle.checked;
+        
         if (!ai) {
             const aiMessageDiv = document.createElement('div');
             aiMessageDiv.className = 'ai-message';
-            aiMessageDiv.textContent = 'AI service is not available. Please check the API key.';
+            aiMessageDiv.innerHTML = `<span class="ai-message-text">AI service is not available. Please check the API key.</span>`;
             messagesContainer.appendChild(aiMessageDiv);
             input.disabled = true;
-            button.disabled = true;
+            submitButton.disabled = true;
+            micBtn.disabled = true;
             return;
         }
-        
+
         if (!aiChat) {
              aiChat = ai.chats.create({
                 model: 'gemini-2.5-flash',
@@ -359,6 +490,88 @@ document.addEventListener('DOMContentLoaded', function() {
                     systemInstruction: "You are an expert in cryptocurrency, blockchain technology, and decentralized finance (DeFi). Provide clear, concise, and easy-to-understand answers. Be friendly and helpful.",
                 },
             });
+        }
+        
+        // --- Text-to-Speech ---
+        ttsToggle.addEventListener('change', () => {
+            isTTSEnabled = ttsToggle.checked;
+            if (isTTSEnabled) {
+                ttsStatusIcon.classList.replace('fa-volume-mute', 'fa-volume-up');
+            } else {
+                ttsStatusIcon.classList.replace('fa-volume-up', 'fa-volume-mute');
+                speechSynthesis.cancel(); // Stop any ongoing speech
+            }
+        });
+
+        function speak(text: string, messageElement: HTMLElement) {
+            // FIX: Corrected operator precedence to check for 'speechSynthesis' in window.
+            if (!isTTSEnabled || !('speechSynthesis' in window)) return;
+            
+            speechSynthesis.cancel(); // Stop previous speech
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            const speakerIcon = document.createElement('i');
+            speakerIcon.className = 'fas fa-volume-up speaking-indicator';
+            messageElement.appendChild(speakerIcon);
+
+            utterance.onend = () => {
+                speakerIcon.remove();
+            };
+            utterance.onerror = () => {
+                 speakerIcon.remove();
+            };
+
+            speechSynthesis.speak(utterance);
+        }
+
+        // --- Speech-to-Text ---
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        let recognition: any | null = null;
+        let isListening = false;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+
+            micBtn.addEventListener('click', () => {
+                if (isListening) {
+                    recognition.stop();
+                } else {
+                    recognition.start();
+                }
+            });
+
+            recognition.onstart = () => {
+                isListening = true;
+                micBtn.classList.add('listening');
+                micBtn.innerHTML = '<i class="fas fa-stop"></i>';
+                logToTerminal('Voice recognition started.');
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                micBtn.classList.remove('listening');
+                micBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+                 logToTerminal('Voice recognition ended.');
+            };
+
+            recognition.onresult = (event: any) => {
+                const transcript = event.results[0][0].transcript;
+                input.value = transcript;
+                // Automatically submit the form
+                form.dispatchEvent(new Event('submit', { cancelable: true }));
+            };
+            
+            recognition.onerror = (event: any) => {
+                logToTerminal(`Voice recognition error: ${event.error}`, 'error');
+                showToast(`Voice Error: ${event.error}`, 'error');
+            };
+
+        } else {
+            micBtn.disabled = true;
+            showToast('Speech recognition not supported by this browser.', 'warning');
         }
 
 
@@ -375,7 +588,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             input.value = '';
             input.disabled = true;
-            button.disabled = true;
+            submitButton.disabled = true;
+            micBtn.disabled = true;
             
             // Display thinking indicator
             const thinkingDiv = document.createElement('div');
@@ -391,8 +605,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 const aiMessageDiv = document.createElement('div');
                 aiMessageDiv.className = 'ai-message';
-                aiMessageDiv.textContent = response.text;
+                const messageTextSpan = document.createElement('span');
+                messageTextSpan.className = 'ai-message-text';
+                messageTextSpan.textContent = response.text;
+                aiMessageDiv.appendChild(messageTextSpan);
                 messagesContainer.appendChild(aiMessageDiv);
+                
+                speak(response.text, aiMessageDiv);
 
             } catch (error) {
                 console.error("AI chat error:", error);
@@ -400,16 +619,125 @@ document.addEventListener('DOMContentLoaded', function() {
                 const errorDiv = document.createElement('div');
                 errorDiv.className = 'ai-message';
                 errorDiv.style.color = 'var(--error)';
-                errorDiv.textContent = 'Sorry, I encountered an error. Please try again.';
+                errorDiv.innerHTML = `<span class="ai-message-text">Sorry, I encountered an error. Please try again.</span>`;
                 messagesContainer.appendChild(errorDiv);
                 logToTerminal('AI chat error.', 'error');
             } finally {
                 input.disabled = false;
-                button.disabled = false;
+                submitButton.disabled = false;
+                if(recognition) micBtn.disabled = false;
                 input.focus();
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             }
         };
+    }
+
+    function setupSentinelProtocol(sentinelElement: HTMLElement) {
+        const tabs = sentinelElement.querySelectorAll('.sentinel-tab');
+        const contents = sentinelElement.querySelectorAll('.sentinel-tab-content');
+
+        // Tab switching logic
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetTab = tab.getAttribute('data-tab');
+
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                contents.forEach(content => {
+                    if (content.getAttribute('data-tab-content') === targetTab) {
+                        content.classList.add('active');
+                    } else {
+                        content.classList.remove('active');
+                    }
+                });
+            });
+        });
+        
+        // Sentiment Analysis Module
+        const scoreEl = sentinelElement.querySelector('.sentiment-score') as HTMLElement;
+        const labelEl = sentinelElement.querySelector('.sentiment-label') as HTMLElement;
+        const needleEl = sentinelElement.querySelector('.gauge-needle') as HTMLElement;
+        const driversListEl = sentinelElement.querySelector('.drivers-list') as HTMLUListElement;
+
+        let currentScore = 72; // Initial score
+        
+        const positiveDrivers = [
+            "Major exchange lists SNTL.",
+            "Positive regulatory news emerges.",
+            "Partnership with top DeFi protocol announced.",
+            "Staking rewards program proves popular.",
+            "Whale accumulation detected on-chain."
+        ];
+        const negativeDrivers = [
+            "Key developer departs from project.",
+            "Exploit found in a related protocol.",
+            "General market downturn affects all assets.",
+            "Regulatory uncertainty concerns investors.",
+            "Social media sentiment turns negative."
+        ];
+
+        function updateSentiment() {
+            // Simulate score fluctuation
+            const change = Math.floor(Math.random() * 11) - 5; // -5 to +5
+            currentScore = Math.max(0, Math.min(100, currentScore + change));
+            
+            // Update score and label
+            if (!scoreEl || !labelEl || !needleEl || !driversListEl) return;
+
+            scoreEl.textContent = String(currentScore);
+            
+            let label = 'Neutral';
+            let labelClass = 'neutral';
+            if (currentScore > 75) {
+                label = 'Extreme Greed';
+                labelClass = 'greed';
+            } else if (currentScore > 55) {
+                label = 'Greed';
+                labelClass = 'greed';
+            } else if (currentScore < 25) {
+                label = 'Extreme Fear';
+                labelClass = 'fear';
+            } else if (currentScore < 45) {
+                label = 'Fear';
+                labelClass = 'fear';
+            }
+            labelEl.textContent = label;
+            labelEl.className = `sentiment-label ${labelClass}`;
+
+            // Update gauge needle rotation
+            // The gauge is a semicircle, -90deg is 0, +90deg is 100.
+            const rotation = (currentScore / 100) * 180 - 90;
+            needleEl.style.transform = `rotate(${rotation}deg)`;
+            
+            // Update drivers
+            driversListEl.innerHTML = '';
+            const driver1 = positiveDrivers[Math.floor(Math.random() * positiveDrivers.length)];
+            const driver2 = negativeDrivers[Math.floor(Math.random() * negativeDrivers.length)];
+            const drivers = Math.random() > 0.5 ? [driver1, driver2] : [driver2, driver1]; // shuffle
+            
+            if (currentScore > 60) {
+                drivers.push(positiveDrivers[Math.floor(Math.random() * positiveDrivers.length)]);
+            } else if (currentScore < 40) {
+                drivers.push(negativeDrivers[Math.floor(Math.random() * negativeDrivers.length)]);
+            }
+
+            // Show 2 random drivers
+            const selectedDrivers = drivers.sort(() => 0.5 - Math.random()).slice(0, 2);
+
+            selectedDrivers.forEach(d => {
+                const isPositive = positiveDrivers.includes(d);
+                const li = document.createElement('li');
+                li.innerHTML = `<i class="fas ${isPositive ? 'fa-arrow-up' : 'fa-arrow-down'}"></i> ${d}`;
+                li.classList.add(isPositive ? 'positive' : 'negative');
+                driversListEl.appendChild(li);
+            });
+        }
+        
+        updateSentiment(); // Initial call
+        const sentimentInterval = setInterval(updateSentiment, 4000);
+        
+        // Note: A robust implementation would clear this interval when the component is removed.
     }
 
     function initializeAdminControls() {
@@ -736,36 +1064,35 @@ Generate only the raw HTML code block. Do not use markdown backticks.`;
 
     contextMenu.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
-        const actionItem = target.closest('li[data-action]') as HTMLElement;
-        if (!actionItem || !contextElement || actionItem.classList.contains('disabled')) return;
+        const actionItem = target.closest('li[data-action]');
+        if (!actionItem || actionItem.classList.contains('disabled')) return;
 
-        const action = actionItem.dataset.action;
+        const action = actionItem.getAttribute('data-action');
 
-        switch (action) {
-            case 'edit':
-                selectElement(contextElement);
-                logToTerminal(`Editing properties for component: ${contextElement.dataset.type || 'AI Component'}`);
-                break;
-            case 'duplicate':
-                const clone = contextElement.cloneNode(true) as HTMLElement;
-                clone.classList.remove('selected');
-                contextElement.insertAdjacentElement('afterend', clone);
-                logToTerminal(`Component duplicated.`);
-                break;
-            case 'delete':
-                const componentType = contextElement.dataset.type || 'AI Component';
-                contextElement.remove();
-                logToTerminal(`Component "${componentType}" removed.`, 'warning');
-                if (selectedElement === contextElement) {
-                    selectedElement = null;
-                    propertiesEditor.innerHTML = '<p class="properties-placeholder">Select a DEX element to edit its properties.</p>';
-                }
-                if (previewArea.querySelectorAll('.app-component:not(.dex-module), .generated-component').length === 0) {
-                    if (previewPlaceholder) previewPlaceholder.style.display = 'flex';
-                }
-                break;
+        if (contextElement) {
+            switch (action) {
+                case 'duplicate':
+                    const type = contextElement.dataset.type;
+                    if (type) {
+                        const rect = contextElement.getBoundingClientRect();
+                        addComponentToPreview(type, rect.left + 20, rect.top + 20);
+                        logToTerminal(`Component duplicated: ${type}`);
+                    }
+                    break;
+                case 'delete':
+                    contextElement.remove();
+                    logToTerminal(`Component removed.`);
+                    if (previewArea.querySelectorAll('.app-component:not(.dex-module)').length === 0) {
+                        if (previewPlaceholder) {
+                            previewPlaceholder.style.display = 'flex';
+                        }
+                    }
+                    break;
+                case 'edit':
+                    selectElement(contextElement);
+                    break;
+            }
         }
-
         hideContextMenu();
     });
 
@@ -775,9 +1102,9 @@ Generate only the raw HTML code block. Do not use markdown backticks.`;
         }
     });
 
-    // Initial state
-    initializeAdminControls();
-    initializeAIGenesis();
+    // --- Initialization ---
     logToTerminal('DEX Builder initialized.');
     updateSwapButton();
+    initializeAdminControls();
+    initializeAIGenesis();
 });
