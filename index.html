@@ -1,696 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Web3 App Builder Pro</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<style>
-/* ==== CSS Variables ==== */
-:root {
-  --primary-bg: linear-gradient(135deg, #1e2a78 0%, #0f172a 100%);
-  --secondary-bg: #0f172a;
-  --panel-bg: #1a1b26;
-  --accent-color: #6e8efb;
-  --accent-color-2: #f78d60;
-  --success-color: #10b981;
-  --text-color: #f8fafc;
-  --terminal-bg: #1a1b26;
-  --terminal-text: #00ff00;
-  --border-radius: 10px;
-  --transition: all 0.3s ease;
-  --glow: 0 0 15px rgba(110, 142, 251, 0.5);
-  --glow-orange: 0 0 15px rgba(247, 141, 96, 0.5);
-}
-
-/* ==== Reset & Body ==== */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-}
-
-body {
-  background: var(--primary-bg);
-  color: var(--text-color);
-  overflow-x: hidden;
-  min-height: 100vh;
-  padding: 20px;
-}
-
-/* ==== Header ==== */
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px 0;
-  margin-bottom: 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.header h1 {
-  font-size: 2.2rem;
-  background: linear-gradient(90deg, var(--accent-color), var(--accent-color-2));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-shadow: var(--glow);
-  letter-spacing: 1px;
-}
-
-/* ==== Toggle Button ==== */
-.toggle-btn {
-  padding: 14px 24px;
-  background: var(--accent-color);
-  color: #fff;
-  border: none;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  font-weight: bold;
-  transition: var(--transition);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.toggle-btn:hover {
-  background: #8aa4ff;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
-}
-
-/* ==== App Builder Container ==== */
-#app-builder-container {
-  display: none;
-  margin-top: 20px;
-  background: rgba(15, 23, 42, 0.9);
-  backdrop-filter: blur(10px);
-  border-radius: var(--border-radius);
-  padding: 25px;
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-#builder-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 25px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-#builder-header h1 {
-  font-size: 1.8em;
-  color: var(--accent-color);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-/* ==== Wallet Button ==== */
-#wallet-btn {
-  padding: 12px 24px;
-  background: var(--accent-color);
-  color: #fff;
-  border: none;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  transition: var(--transition);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: bold;
-}
-
-#wallet-btn:hover {
-  background: #8aa4ff;
-  transform: translateY(-2px);
-}
-
-#wallet-btn.connected {
-  background: var(--success-color);
-}
-
-/* ==== Builder Main Content ==== */
-#builder-main-content {
-  display: grid;
-  grid-template-columns: 280px 1fr 280px;
-  gap: 25px;
-  margin-bottom: 25px;
-}
-
-.panel {
-  background: var(--panel-bg);
-  padding: 25px;
-  border-radius: var(--border-radius);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  display: flex;
-  flex-direction: column;
-}
-
-.panel h2 {
-  margin-bottom: 20px;
-  color: var(--accent-color-2);
-  font-size: 1.4rem;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* ==== Components List ==== */
-.components-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 15px;
-}
-
-.component {
-  padding: 15px;
-  background: #252836;
-  border-radius: 8px;
-  cursor: grab;
-  text-align: center;
-  transition: var(--transition);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  position: relative;
-  overflow: hidden;
-}
-
-.component:hover {
-  background: #2f3246;
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-  border-color: var(--accent-color);
-}
-
-.component.dragging {
-  opacity: 0.5;
-  transform: scale(0.95);
-}
-
-.component i {
-  font-size: 1.8rem;
-  color: var(--accent-color);
-}
-
-.component::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 3px;
-  background: linear-gradient(90deg, var(--accent-color), var(--accent-color-2));
-  opacity: 0;
-  transition: var(--transition);
-}
-
-.component:hover::before {
-  opacity: 1;
-}
-
-/* ==== Preview Area ==== */
-#preview-panel {
-  display: flex;
-  flex-direction: column;
-}
-#preview {
-  background: var(--secondary-bg);
-  min-height: 400px;
-  flex-grow: 1;
-  border-radius: var(--border-radius);
-  overflow: auto;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  position: relative;
-}
-
-#preview.grid-active {
-  background-image: 
-    linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
-  background-size: 20px 20px;
-}
-
-#preview.empty::before {
-  content: 'Drag components here to build your app';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: rgba(255, 255, 255, 0.3);
-  font-size: 1.2rem;
-  font-style: italic;
-}
-
-.preview-component {
-  /* Default padding and border are now set via JS inline styles */
-  background: #252836;
-  min-width: 120px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  transition: box-shadow 0.3s ease, background 0.3s ease, border 0.3s ease;
-  position: absolute;
-  cursor: grab;
-  color: var(--text-color);
-}
-
-.preview-component.selected {
-  border: 2px solid var(--accent-color-2) !important; /* Use important to override inline style */
-  box-shadow: var(--glow-orange);
-}
-
-.preview-component:hover {
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-}
-
-.preview-component i {
-  color: var(--accent-color);
-  font-size: 1.5rem;
-}
-
-.preview-component .remove-btn {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: #ff6b6b;
-  color: white;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  cursor: pointer;
-  opacity: 0;
-  transition: var(--transition);
-  z-index: 10;
-}
-
-.preview-component:hover .remove-btn {
-  opacity: 1;
-}
-
-/* Properties Panel & Form Styles */
-#properties-panel {
-  display: none; /* Hidden by default */
-}
-#properties-panel.active {
-    display: flex;
-}
-
-#properties-form h4 {
-    color: var(--accent-color-2);
-    margin-top: 20px;
-    margin-bottom: 15px;
-    padding-bottom: 5px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-#properties-form h4:first-child {
-    margin-top: 0;
-}
-
-.property-group {
-  margin-bottom: 18px;
-}
-
-.property-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.8);
-  letter-spacing: 0.5px;
-}
-
-.property-group input[type="text"],
-.property-group textarea {
-  width: 100%;
-  padding: 12px;
-  background: #2a2d40;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  color: var(--text-color);
-  font-family: inherit;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-.property-group input[type="text"]:focus,
-.property-group textarea:focus,
-.property-group input[type="color"]:focus {
-  outline: none;
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 3px rgba(110, 142, 251, 0.3);
-}
-
-.property-group textarea {
-    resize: vertical;
-    min-height: 80px;
-}
-
-.property-group input[type="color"] {
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 45px;
-  background-color: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  cursor: pointer;
-  padding: 4px;
-}
-
-.property-group input[type="color"]::-webkit-color-swatch {
-  border-radius: 4px;
-  border: none;
-}
-.property-group input[type="color"]::-moz-color-swatch {
-  border-radius: 4px;
-  border: none;
-}
-
-#properties-placeholder {
-    color: rgba(255, 255, 255, 0.4);
-    text-align: center;
-    margin-top: 40px;
-}
-
-
-/* ==== Terminal ==== */
-.terminal-container {
-  margin-top: 25px;
-}
-
-.terminal-container h2 {
-  margin-bottom: 15px;
-  color: var(--accent-color-2);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-#terminal {
-  background: var(--terminal-bg);
-  color: var(--terminal-text);
-  font-family: monospace;
-  height: 180px;
-  overflow-y: auto;
-  padding: 20px;
-  border-radius: var(--border-radius);
-  border: 1px solid rgba(0, 255, 0, 0.1);
-  box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.4);
-  line-height: 1.6;
-}
-
-.terminal-command {
-  color: #00ccff;
-}
-
-.terminal-success {
-  color: var(--success-color);
-}
-
-.terminal-error {
-  color: #ff6b6b;
-}
-
-.terminal-warning {
-  color: #ffaa00;
-}
-
-/* ==== Toast ==== */
-.toast {
-  position: fixed;
-  bottom: 30px;
-  right: 30px;
-  background: var(--success-color);
-  color: #111;
-  padding: 15px 25px;
-  border-radius: var(--border-radius);
-  opacity: 0;
-  pointer-events: none;
-  transition: var(--transition);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-weight: bold;
-  max-width: 350px;
-}
-
-.toast.show {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(-15px);
-}
-
-.toast.error {
-  background: #ff6b6b;
-  color: #fff;
-}
-
-.toast.warning {
-  background: #ffaa00;
-  color: #111;
-}
-
-/* ==== Modal ==== */
-.modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.8);
-  opacity: 0;
-  pointer-events: none;
-  transition: var(--transition);
-  z-index: 1000;
-  backdrop-filter: blur(5px);
-}
-
-.modal.active {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.modal-content {
-  background: var(--panel-bg);
-  padding: 30px;
-  border-radius: var(--border-radius);
-  width: 400px;
-  text-align: center;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  position: relative;
-}
-
-.modal-content h2 {
-  margin-bottom: 20px;
-  color: var(--accent-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-}
-
-.modal-content p {
-  margin-bottom: 25px;
-  color: rgba(255, 255, 255, 0.8);
-  line-height: 1.6;
-}
-
-#export-code {
-    width: 100%;
-    margin-bottom: 20px;
-    padding: 15px;
-    background: #1e1e1e;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: var(--border-radius);
-    color: #d4d4d4;
-    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-    resize: vertical;
-    min-height: 150px;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-#export-code:focus {
-    outline: none;
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 3px rgba(110, 142, 251, 0.3);
-}
-
-
-.modal-buttons {
-  display: flex;
-  gap: 15px;
-  justify-content: center;
-  margin-top: 20px;
-}
-
-.modal-content button {
-  padding: 12px 24px;
-  background: var(--accent-color);
-  border: none;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  color: #fff;
-  transition: var(--transition);
-  font-weight: bold;
-  flex: 1;
-}
-
-.modal-content button:hover {
-  background: #8aa4ff;
-  transform: translateY(-2px);
-}
-
-.modal-content button#disconnect-wallet {
-  background: #ff6b6b;
-}
-
-.modal-content button#disconnect-wallet:hover {
-  background: #ff8787;
-}
-
-/* ==== Action Buttons ==== */
-.action-buttons {
-  display: flex;
-  gap: 15px;
-  margin-top: 20px;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-}
-
-.action-btn {
-  padding: 12px 20px;
-  border: none;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  transition: var(--transition);
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.action-btn.primary {
-  background: var(--accent-color);
-  color: white;
-}
-
-.action-btn.secondary {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-}
-
-.action-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-}
-
-/* ==== Responsive Design ==== */
-@media (max-width: 1200px) {
-  #builder-main-content {
-    grid-template-columns: 1fr;
-  }
-  #properties-panel {
-      grid-row: 2; /* Move to second row */
-  }
-}
-
-@media (max-width: 968px) {
-  .components-grid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  }
-  
-  .header {
-    flex-direction: column;
-    gap: 20px;
-    text-align: center;
-  }
-  
-  .modal-content {
-    width: 90%;
-    max-width: 350px;
-  }
-  
-  .modal-buttons {
-    flex-direction: column;
-  }
-}
-
-@media (max-width: 640px) {
-  .components-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .action-buttons {
-    flex-direction: column;
-  }
-}
-
-/* ==== Animations ==== */
-@keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.pulse {
-  animation: pulse 2s infinite;
-}
-
-.fade-in {
-  animation: fadeIn 0.5s ease-out;
-}
-
-/* ==== Custom Scrollbar ==== */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--accent-color);
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #8aa4ff;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web3 DEX Builder</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="index.css">
 <script type="importmap">
 {
   "imports": {
@@ -702,960 +17,181 @@ body {
 </script>
 </head>
 <body>
-
-<div class="header">
-  <h1><i class="fas fa-cube"></i> Web3 App Builder Pro</h1>
-  <button class="toggle-btn" id="toggle-builder-btn">
-    <i class="fas fa-cube"></i> Activate Builder
-  </button>
-</div>
-
-<div id="app-builder-container">
-  <div id="builder-header">
-    <h1><i class="fas fa-cubes"></i> Web3 App Builder</h1>
-    <button id="wallet-btn">
-      <i class="fas fa-wallet"></i> Connect Wallet
-    </button>
-  </div>
-  
-  <div id="builder-main-content">
-    <div class="panel" id="components-panel">
-      <h2><i class="fas fa-puzzle-piece"></i> Components</h2>
-      <div class="components-grid">
-        <div class="component" draggable="true" data-type="button">
-          <i class="fas fa-hand-pointer"></i>
-          <span>Button</span>
-        </div>
-        <div class="component" draggable="true" data-type="input">
-          <i class="fas fa-font"></i>
-          <span>Input</span>
-        </div>
-        <div class="component" draggable="true" data-type="slider">
-          <i class="fas fa-sliders-h"></i>
-          <span>Slider</span>
-        </div>
-        <div class="component" draggable="true" data-type="card">
-          <i class="fas fa-id-card"></i>
-          <span>Card</span>
-        </div>
-        <div class="component" draggable="true" data-type="navbar">
-          <i class="fas fa-bars"></i>
-          <span>Navbar</span>
-        </div>
-        <div class="component" draggable="true" data-type="modal">
-          <i class="fas fa-window-maximize"></i>
-          <span>Modal</span>
-        </div>
-        <div class="component" draggable="true" data-type="table">
-          <i class="fas fa-table"></i>
-          <span>Data Table</span>
-        </div>
-        <div class="component" draggable="true" data-type="chart">
-          <i class="fas fa-chart-bar"></i>
-          <span>Chart</span>
-        </div>
-      </div>
-    </div>
+    <!-- Parallax background layers -->
+    <div class="parallax-layer" style="z-index: -3; background: radial-gradient(circle at 20% 50%, rgba(110, 142, 251, 0.1) 0%, transparent 50%);"></div>
+    <div class="parallax-layer" style="z-index: -2; background: radial-gradient(circle at 80% 20%, rgba(247, 141, 96, 0.1) 0%, transparent 50%);"></div>
+    <div class="parallax-layer" style="z-index: -1; background: radial-gradient(circle at 40% 80%, rgba(255, 255, 51, 0.05) 0%, transparent 50%);"></div>
     
-    <div class="panel" id="preview-panel">
-      <h2><i class="fas fa-eye"></i> Preview</h2>
-      <div id="preview" class="empty"></div>
-      
-      <div class="action-buttons">
-        <button class="action-btn secondary" id="toggle-grid">
-            <i class="fas fa-th"></i> Toggle Grid
-        </button>
-         <button class="action-btn secondary" id="save-layout">
-            <i class="fas fa-save"></i> Save Layout
-        </button>
-        <button class="action-btn secondary" id="load-layout">
-            <i class="fas fa-folder-open"></i> Load Layout
-        </button>
-        <button class="action-btn secondary" id="clear-preview">
-          <i class="fas fa-trash"></i> Clear All
-        </button>
-        <button class="action-btn primary" id="export-project">
-          <i class="fas fa-download"></i> Export Project
-        </button>
-      </div>
-    </div>
-
-    <div class="panel" id="properties-panel">
-        <h2><i class="fas fa-edit"></i> Properties</h2>
-        <div id="properties-form"></div>
-        <div id="properties-placeholder">
-            <p>Select a component to edit its properties.</p>
-        </div>
-    </div>
-  </div>
-  
-  <div class="terminal-container">
-    <h2><i class="fas fa-terminal"></i> Terminal</h2>
-    <div id="terminal"></div>
-  </div>
-</div>
-
-<div class="toast" id="toast">
-  <i class="fas fa-check-circle"></i>
-  <span>Action Completed</span>
-</div>
-
-<div class="modal" id="wallet-modal">
-  <div class="modal-content">
-    <h2><i class="fas fa-wallet"></i> Wallet Connection</h2>
-    <p>Connect your wallet to enable Web3 functionality and access advanced features</p>
-    <div class="modal-buttons">
-      <button id="connect-wallet">
-        <i class="fas fa-plug"></i> Connect
-      </button>
-      <button id="disconnect-wallet">
-        <i class="fas fa-times"></i> Disconnect
-      </button>
-    </div>
-  </div>
-</div>
-
-<div class="modal" id="export-modal">
-  <div class="modal-content">
-    <h2><i class="fas fa-download"></i> Export Project</h2>
-    <p>Your project code has been generated successfully. Copy the code below or download it as a HTML file.</p>
-    <textarea id="export-code" rows="10" readonly></textarea>
-    <div class="modal-buttons">
-      <button id="copy-code">
-        <i class="fas fa-copy"></i> Copy Code
-      </button>
-      <button id="download-code" class="primary">
-        <i class="fas fa-download"></i> Download
-      </button>
-    </div>
-  </div>
-</div>
-
-<script>
-// ==== DOM Elements ====
-const toggleBtn = document.getElementById('toggle-builder-btn');
-const builderContainer = document.getElementById('app-builder-container');
-const walletBtn = document.getElementById('wallet-btn');
-const walletModal = document.getElementById('wallet-modal');
-const connectBtn = document.getElementById('connect-wallet');
-const disconnectBtn = document.getElementById('disconnect-wallet');
-const toast = document.getElementById('toast');
-const terminal = document.getElementById('terminal');
-const preview = document.getElementById('preview');
-const components = document.querySelectorAll('.component');
-const clearPreviewBtn = document.getElementById('clear-preview');
-const exportProjectBtn = document.getElementById('export-project');
-const exportModal = document.getElementById('export-modal');
-const exportCode = document.getElementById('export-code');
-const copyCodeBtn = document.getElementById('copy-code');
-const downloadCodeBtn = document.getElementById('download-code');
-const toggleGridBtn = document.getElementById('toggle-grid');
-const propertiesPanel = document.getElementById('properties-panel');
-const propertiesForm = document.getElementById('properties-form');
-const propertiesPlaceholder = document.getElementById('properties-placeholder');
-const saveLayoutBtn = document.getElementById('save-layout');
-const loadLayoutBtn = document.getElementById('load-layout');
-
-
-// ==== App State ====
-let builderActive = false;
-let walletConnected = false;
-let componentCount = 0;
-let projectComponents = [];
-let gridActive = false;
-const gridSize = 20;
-let selectedComponentId = null;
-const LAYOUT_STORAGE_KEY = 'web3-app-builder-layout';
-
-// ==== Toggle Builder ====
-toggleBtn.addEventListener('click', () => {
-  builderActive = !builderActive;
-  builderContainer.style.display = builderActive ? 'block' : 'none';
-  toggleBtn.innerHTML = builderActive ? 
-    '<i class="fas fa-times"></i> Deactivate Builder' : 
-    '<i class="fas fa-cube"></i> Activate Builder';
-  showToast(builderActive ? 'Builder Activated' : 'Builder Hidden');
-  logTerminal(builderActive ? 'Builder interface activated' : 'Builder interface hidden', 'success');
-});
-
-// ==== Grid System ====
-toggleGridBtn.addEventListener('click', () => {
-  gridActive = !gridActive;
-  preview.classList.toggle('grid-active', gridActive);
-  toggleGridBtn.classList.toggle('primary', gridActive);
-  toggleGridBtn.classList.toggle('secondary', !gridActive);
-  showToast(gridActive ? 'Grid enabled' : 'Grid disabled');
-  logTerminal(`Grid snapping ${gridActive ? 'enabled' : 'disabled'}.`, 'info');
-});
-
-// ==== Toast Function ====
-function showToast(msg, type = 'success') {
-  const toastIcon = toast.querySelector('i');
-  const toastText = toast.querySelector('span');
-  
-  toastText.textContent = msg;
-  toast.className = 'toast'; // Reset classes
-  
-  switch(type) {
-    case 'error':
-      toast.classList.add('error');
-      toastIcon.className = 'fas fa-exclamation-circle';
-      break;
-    case 'warning':
-      toast.classList.add('warning');
-      toastIcon.className = 'fas fa-exclamation-triangle';
-      break;
-    default:
-      toastIcon.className = 'fas fa-check-circle';
-  }
-  
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 3000);
-}
-
-// ==== Terminal Logging ====
-function logTerminal(msg, type = 'info') {
-  const p = document.createElement('div');
-  p.className = 'fade-in';
-  
-  switch(type) {
-    case 'command':
-      p.className = 'terminal-command';
-      p.innerHTML = `<i class="fas fa-chevron-right"></i> ${msg}`;
-      break;
-    case 'success':
-      p.className = 'terminal-success';
-      p.innerHTML = `<i class="fas fa-check-circle"></i> ${msg}`;
-      break;
-    case 'error':
-      p.className = 'terminal-error';
-      p.innerHTML = `<i class="fas fa-times-circle"></i> ${msg}`;
-      break;
-    case 'warning':
-      p.className = 'terminal-warning';
-      p.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${msg}`;
-      break;
-    default:
-      p.textContent = `> ${msg}`;
-  }
-  
-  terminal.appendChild(p);
-  terminal.scrollTop = terminal.scrollHeight;
-}
-
-// ==== Wallet Functions ====
-walletBtn.addEventListener('click', () => {
-  walletModal.classList.add('active');
-});
-
-connectBtn.addEventListener('click', () => {
-  walletModal.classList.remove('active');
-  walletConnected = true;
-  walletBtn.innerHTML = '<i class="fas fa-check"></i> Connected';
-  walletBtn.classList.add('connected');
-  logTerminal('Wallet connected successfully', 'success');
-  showToast('Wallet Connected');
-});
-
-disconnectBtn.addEventListener('click', () => {
-  walletModal.classList.remove('active');
-  walletConnected = false;
-  walletBtn.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
-  walletBtn.classList.remove('connected');
-  logTerminal('Wallet disconnected', 'info');
-  showToast('Wallet Disconnected', 'warning');
-});
-
-// ==== Drag & Drop Components ====
-components.forEach(component => {
-  component.addEventListener('dragstart', e => {
-    component.classList.add('dragging');
-    e.dataTransfer.setData('text/plain', component.dataset.type);
-  });
-  
-  component.addEventListener('dragend', () => {
-    component.classList.remove('dragging');
-  });
-});
-
-preview.addEventListener('dragover', e => {
-  e.preventDefault();
-  preview.style.backgroundColor = 'rgba(15, 23, 42, 0.9)';
-});
-
-preview.addEventListener('dragleave', () => {
-  preview.style.backgroundColor = '';
-});
-
-preview.addEventListener('drop', e => {
-  e.preventDefault();
-  preview.style.backgroundColor = '';
-  
-  const data = e.dataTransfer.getData('text/plain');
-  const rect = preview.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-
-  if (data.startsWith('component-')) {
-    // Rearrange existing component
-    const draggedEl = document.getElementById(data);
-    if (draggedEl) {
-      const componentWidth = draggedEl.offsetWidth;
-      const componentHeight = draggedEl.offsetHeight;
-      
-      let finalX = x - (componentWidth / 2);
-      let finalY = y - (componentHeight / 2);
-
-      if (gridActive) {
-        finalX = Math.round(finalX / gridSize) * gridSize;
-        finalY = Math.round(finalY / gridSize) * gridSize;
-      }
-      
-      finalX = Math.max(0, finalX);
-      finalY = Math.max(0, finalY);
-
-      draggedEl.style.left = `${finalX}px`;
-      draggedEl.style.top = `${finalY}px`;
-
-      const comp = projectComponents.find(c => c.id === data);
-      if (comp) {
-        comp.x = finalX;
-        comp.y = finalY;
-      }
-      logTerminal(`Rearranged ${draggedEl.dataset.type} component`, 'info');
-    }
-  } else if (data) {
-    // Add new component
-    addComponentToPreview(data, x, y);
-  }
-});
-
-// ==== Add Component to Preview ====
-function addComponentToPreview(type, x, y) {
-  if (!walletConnected && !['button', 'input', 'card'].includes(type)) {
-    showToast('Please connect wallet first to use this component', 'error');
-    logTerminal('Wallet required for this component', 'error');
-    return;
-  }
-  
-  componentCount++;
-  const id = `component-${componentCount}`;
-  
-  const componentEl = document.createElement('div');
-  componentEl.className = 'preview-component fade-in';
-  componentEl.draggable = true;
-  componentEl.id = id;
-  componentEl.dataset.type = type;
-
-  const baseProperties = {
-    padding: '15px',
-    margin: '0px',
-    border: '2px dashed rgba(110, 142, 251, 0.5)',
-    borderRadius: '8px',
-  };
-
-  const componentData = {
-    id: id,
-    type: type,
-    element: componentEl,
-    properties: { ...baseProperties }
-  };
-  
-  // Create remove button
-  const removeBtn = document.createElement('button');
-  removeBtn.className = 'remove-btn';
-  removeBtn.innerHTML = '<i class="fas fa-times"></i>';
-  removeBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    componentEl.remove();
-    updateEmptyState();
-    logTerminal(`Removed ${type} component`, 'info');
-    showToast(`Component removed`, 'warning');
-    projectComponents = projectComponents.filter(comp => comp.id !== id);
-    if (selectedComponentId === id) {
-        deselectComponent();
-    }
-  });
-  
-  const contentSpan = document.createElement('span');
-
-  switch(type) {
-    case 'button':
-      Object.assign(componentData.properties, { text: 'Web3 Button', bgColor: '#6e8efb', textColor: '#ffffff' });
-      contentSpan.innerHTML = `<i class="fas fa-hand-pointer"></i><span data-prop="text">${componentData.properties.text}</span>`;
-      componentEl.style.backgroundColor = componentData.properties.bgColor;
-      componentEl.style.color = componentData.properties.textColor;
-      break;
-    case 'input':
-      Object.assign(componentData.properties, { placeholder: 'Enter text here', bgColor: '#252836' });
-      contentSpan.innerHTML = `<i class="fas fa-font"></i><input type="text" placeholder="${componentData.properties.placeholder}" style="background-color: ${componentData.properties.bgColor}; color: white; border: none; text-align: center; pointer-events: none;" readonly>`;
-      break;
-    case 'card':
-      Object.assign(componentData.properties, { title: 'Info Card', content: 'This is a sample card.' });
-      contentSpan.innerHTML = `<div style="text-align: left; width: 100%;"><h4 data-prop="title">${componentData.properties.title}</h4><p data-prop="content">${componentData.properties.content}</p></div>`;
-      break;
-    case 'slider':
-      contentSpan.innerHTML = '<i class="fas fa-sliders-h"></i><span>Range Slider</span>';
-      break;
-    case 'navbar':
-      contentSpan.innerHTML = '<i class="fas fa-bars"></i><span>Navigation</span>';
-      break;
-    case 'modal':
-      contentSpan.innerHTML = '<i class="fas fa-window-maximize"></i><span>Modal</span>';
-      break;
-    case 'table':
-      contentSpan.innerHTML = '<i class="fas fa-table"></i><span>Data Table</span>';
-      break;
-    case 'chart':
-      contentSpan.innerHTML = '<i class="fas fa-chart-bar"></i><span>Chart</span>';
-      break;
-  }
-  
-  // Apply layout styles
-  componentEl.style.padding = componentData.properties.padding;
-  componentEl.style.margin = componentData.properties.margin;
-  componentEl.style.border = componentData.properties.border;
-  componentEl.style.borderRadius = componentData.properties.borderRadius;
-  
-  componentEl.appendChild(contentSpan);
-  componentEl.appendChild(removeBtn);
-
-  // Approximate dimensions for initial placement
-  const approxWidth = 150;
-  const approxHeight = 80;
-
-  let finalX = x - (approxWidth / 2);
-  let finalY = y - (approxHeight / 2);
-
-  if (gridActive) {
-    finalX = Math.round(finalX / gridSize) * gridSize;
-    finalY = Math.round(finalY / gridSize) * gridSize;
-  }
-
-  finalX = Math.max(0, finalX);
-  finalY = Math.max(0, finalY);
-
-  componentEl.style.left = `${finalX}px`;
-  componentEl.style.top = `${finalY}px`;
-  componentData.x = finalX;
-  componentData.y = finalY;
-
-  // Make preview components draggable within the preview area
-  componentEl.addEventListener('dragstart', e => {
-    e.dataTransfer.setData('text/plain', id);
-    componentEl.style.opacity = '0.5';
-    componentEl.style.cursor = 'grabbing';
-  });
-  
-  componentEl.addEventListener('dragend', () => {
-    componentEl.style.opacity = '1';
-    componentEl.style.cursor = 'grab';
-  });
-  
-  componentEl.addEventListener('click', (e) => {
-    e.stopPropagation();
-    selectComponent(id);
-  });
-  
-  preview.appendChild(componentEl);
-  preview.classList.remove('empty');
-  
-  projectComponents.push(componentData);
-  
-  logTerminal(`Added ${type} component to preview`, 'success');
-  showToast(`${type.charAt(0).toUpperCase() + type.slice(1)} Added`);
-  selectComponent(id);
-}
-
-// ==== Selection & Properties ====
-function selectComponent(id) {
-    if (selectedComponentId) {
-        const oldSelected = document.getElementById(selectedComponentId);
-        if (oldSelected) oldSelected.classList.remove('selected');
-    }
-    selectedComponentId = id;
-    const newSelected = document.getElementById(id);
-    if (newSelected) {
-        newSelected.classList.add('selected');
-        renderPropertiesPanel();
-    }
-}
-
-function deselectComponent() {
-    if (selectedComponentId) {
-        const oldSelected = document.getElementById(selectedComponentId);
-        if (oldSelected) oldSelected.classList.remove('selected');
-    }
-    selectedComponentId = null;
-    renderPropertiesPanel();
-}
-
-function renderPropertiesPanel() {
-    if (!selectedComponentId) {
-        propertiesPanel.classList.remove('active');
-        propertiesPlaceholder.style.display = 'block';
-        propertiesForm.innerHTML = '';
-        return;
-    }
-
-    propertiesPanel.classList.add('active');
-    propertiesPlaceholder.style.display = 'none';
-
-    const component = projectComponents.find(c => c.id === selectedComponentId);
-    if (!component) return;
-
-    let componentSpecificControls = '';
-    const hasSpecificProps = ['button', 'input', 'card'].includes(component.type);
-
-    switch(component.type) {
-        case 'button':
-            componentSpecificControls = `
-                <h4>Component Properties</h4>
-                <div class="property-group">
-                    <label for="prop-text">Button Text</label>
-                    <input type="text" id="prop-text" value="${component.properties.text}">
+    <!-- Toast container -->
+    <div class="toast-container" id="toastContainer"></div>
+    
+    <div class="container">
+        <header>
+            <div class="logo">
+                <i class="fas fa-cubes logo-icon"></i>
+                <h1>DEX Builder</h1>
+            </div>
+            
+            <div class="wallet-section">
+                <div class="wallet-info" id="wallet-info">
+                    <div class="status">
+                        <div class="status-dot connected pulsing" id="wallet-status-indicator"></div>
+                        <span class="wallet-address" id="header-wallet-address">0x1234...5678</span>
+                    </div>
+                    <div class="wallet-balance" id="header-wallet-balance">0.00 ETH</div>
                 </div>
-                <div class="property-group">
-                    <label for="prop-bgColor">Background Color</label>
-                    <input type="color" id="prop-bgColor" value="${component.properties.bgColor}">
+                
+                <button class="btn btn-primary" id="header-connect-btn">
+                    <i class="fas fa-plug"></i> Connect Wallet
+                </button>
+                
+                <button class="btn btn-secondary" id="header-disconnect-btn" style="display: none;">
+                    <i class="fas fa-times"></i> Disconnect
+                </button>
+            </div>
+        </header>
+        
+        <main class="app-builder">
+            <aside class="left-column">
+                <div id="control-hub">
+                    <div class="hub-ring hub-ring-1"></div>
+                    <div class="hub-ring hub-ring-2"></div>
+                    <div class="hub-core">
+                        <div class="hub-button" id="deploy-btn" title="Deploy to Testnet">
+                            <i class="fas fa-rocket"></i>
+                        </div>
+                        <div class="hub-button" id="export-btn" title="Export Code">
+                            <i class="fas fa-download"></i>
+                        </div>
+                        <div class="hub-button" id="preview-btn" title="Live Preview">
+                            <i class="fas fa-play"></i>
+                        </div>
+                         <div class="hub-button" id="reset-btn" title="Reset">
+                            <i class="fas fa-trash"></i>
+                        </div>
+                    </div>
                 </div>
-                <div class="property-group">
-                    <label for="prop-textColor">Text Color</label>
-                    <input type="color" id="prop-textColor" value="${component.properties.textColor}">
+                <div class="panel components-panel">
+                    <h2 class="panel-title"><i class="fas fa-puzzle-piece"></i> Components</h2>
+                    <div class="component-item" data-type="token-list" draggable="true">
+                        <div class="component-icon"><i class="fas fa-coins"></i></div>
+                        <div><h3>Token List</h3><p>Display market pairs</p></div>
+                    </div>
+                    <div class="component-item" data-type="price-chart" draggable="true">
+                        <div class="component-icon"><i class="fas fa-chart-line"></i></div>
+                        <div><h3>Price Chart</h3><p>Candlestick chart</p></div>
+                    </div>
+                    <div class="component-item" data-type="wallet-balance" draggable="true">
+                        <div class="component-icon"><i class="fas fa-wallet"></i></div>
+                        <div><h3>Wallet Balance</h3><p>User token display</p></div>
+                    </div>
+                    <div class="component-item" data-type="tx-history" draggable="true">
+                        <div class="component-icon"><i class="fas fa-history"></i></div>
+                        <div><h3>Transaction History</h3><p>Recent swaps list</p></div>
+                    </div>
                 </div>
-            `;
-            break;
-        case 'input':
-            componentSpecificControls = `
-                <h4>Component Properties</h4>
-                <div class="property-group">
-                    <label for="prop-placeholder">Placeholder</label>
-                    <input type="text" id="prop-placeholder" value="${component.properties.placeholder}">
-                </div>
-                 <div class="property-group">
-                    <label for="prop-bgColor">Background Color</label>
-                    <input type="color" id="prop-bgColor" value="${component.properties.bgColor}">
-                </div>
-            `;
-            break;
-        case 'card':
-            componentSpecificControls = `
-                <h4>Component Properties</h4>
-                <div class="property-group">
-                    <label for="prop-title">Title</label>
-                    <input type="text" id="prop-title" value="${component.properties.title}">
-                </div>
-                <div class="property-group">
-                    <label for="prop-content">Content</label>
-                    <textarea id="prop-content">${component.properties.content}</textarea>
-                </div>
-            `;
-            break;
-    }
+            </aside>
+            
+            <div class="center-column">
+                <div class="panel preview-panel">
+                    <h2 class="panel-title"><i class="fas fa-eye"></i> DEX Live Preview</h2>
+                    <div class="preview-area" id="preview-area">
+                        <!-- Mandatory DEX component -->
+                        <div class="app-component dex-module" data-type="dex" id="dex-main-module">
+                            <div class="dex-header">
+                                <h3 data-editable-part="dex-title">Swap Tokens</h3>
+                                <button class="dex-settings-btn" data-editable-part="dex-settings">
+                                    <i class="fas fa-cog"></i>
+                                </button>
+                            </div>
+                            <div class="dex-body">
+                                <div class="token-input-group" data-editable-part="dex-swap-box">
+                                    <div class="token-input-header">
+                                        <label>You Pay</label>
+                                        <span>Balance: 2.5</span>
+                                    </div>
+                                    <div class="token-input">
+                                        <input type="number" value="1.0" />
+                                        <div class="token-selector">
+                                            <img src="https://cryptologos.cc/logos/ethereum-eth-logo.png" alt="ETH">
+                                            <span>ETH</span>
+                                            <i class="fas fa-chevron-down"></i>
+                                        </div>
+                                    </div>
+                                </div>
 
-    const stylingControls = `
-        <h4>Layout & Style</h4>
-        <div class="property-group">
-            <label for="prop-padding">Padding</label>
-            <input type="text" id="prop-padding" value="${component.properties.padding}">
+                                <div class="swap-icon">
+                                    <i class="fas fa-arrow-down"></i>
+                                </div>
+
+                                <div class="token-input-group" data-editable-part="dex-swap-box">
+                                    <div class="token-input-header">
+                                        <label>You Receive</label>
+                                        <span>Balance: 1,500</span>
+                                    </div>
+                                    <div class="token-input">
+                                        <input type="number" value="1532.5" />
+                                        <div class="token-selector">
+                                            <img src="https://cryptologos.cc/logos/usd-coin-usdc-logo.png" alt="USDC">
+                                            <span>USDC</span>
+                                            <i class="fas fa-chevron-down"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary swap-button" data-editable-part="dex-swap-button">Connect Wallet</button>
+                        </div>
+                        <div class="preview-area-placeholder" id="preview-area-placeholder">
+                            <i class="fas fa-hand-pointer"></i>
+                            <p>Drag components here to build your DEX</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <aside class="right-column">
+                <div class="panel">
+                    <h2 class="panel-title"><i class="fas fa-receipt"></i> Recent Transactions</h2>
+                    <div id="transactions-list" class="transactions-list-container">
+                        <p class="transactions-placeholder">No transactions yet.</p>
+                    </div>
+                </div>
+                <div class="panel">
+                    <h2 class="panel-title"><i class="fas fa-sliders-h"></i> Properties</h2>
+                    <div id="properties-editor">
+                        <p class="properties-placeholder">Select a DEX element to edit its properties.</p>
+                    </div>
+                </div>
+                <div class="panel">
+                    <h2 class="panel-title"><i class="fas fa-terminal"></i> Terminal</h2>
+                    <div class="terminal" id="terminal"></div>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <!-- Connect Wallet Modal -->
+    <div class="modal" id="connect-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Connect Wallet</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="wallet-option" id="connect-metamask-btn">
+                <i class="fab fa-ethereum wallet-icon"></i>
+                <div><h3>MetaMask</h3><p>Connect using browser extension</p></div>
+            </div>
+            <div class="wallet-option" id="connect-walletconnect-btn">
+                <i class="fas fa-wallet wallet-icon"></i>
+                <div><h3>WalletConnect</h3><p>Connect using mobile wallet</p></div>
+            </div>
+            <div class="wallet-option" id="connect-cli-btn">
+                <i class="fas fa-terminal wallet-icon"></i>
+                <div><h3>CLI Wallet</h3><p>Connect to local node</p></div>
+            </div>
         </div>
-        <div class="property-group">
-            <label for="prop-margin">Margin</label>
-            <input type="text" id="prop-margin" value="${component.properties.margin}">
-        </div>
-        <div class="property-group">
-            <label for="prop-border">Border</label>
-            <input type="text" id="prop-border" value="${component.properties.border}">
-        </div>
-        <div class="property-group">
-            <label for="prop-borderRadius">Border Radius</label>
-            <input type="text" id="prop-borderRadius" value="${component.properties.borderRadius}">
-        </div>
-    `;
-
-    let finalHtml = '';
-    if (hasSpecificProps) {
-        finalHtml += componentSpecificControls;
-    } else {
-        finalHtml += '<p>No specific properties for this component.</p>';
-    }
-    finalHtml += stylingControls;
-    propertiesForm.innerHTML = finalHtml;
-    
-    propertiesForm.querySelectorAll('input, textarea').forEach(input => {
-        const prop = input.id.replace('prop-', '');
-        if (prop) {
-            input.addEventListener('input', (e) => updateComponentProperty(prop, e.target.value));
-        }
-    });
-}
-
-function updateComponentProperty(prop, value) {
-    if (!selectedComponentId) return;
-    const component = projectComponents.find(c => c.id === selectedComponentId);
-    if (!component) return;
-
-    component.properties[prop] = value;
-    
-    const el = component.element;
-    
-    // Update general layout properties
-    if (prop === 'padding') el.style.padding = value;
-    if (prop === 'margin') el.style.margin = value;
-    if (prop === 'border') el.style.border = value;
-    if (prop === 'borderRadius') el.style.borderRadius = value;
-    
-    // Update component-specific properties
-    switch(component.type) {
-        case 'button':
-            if (prop === 'text') el.querySelector('[data-prop="text"]').textContent = value;
-            if (prop === 'bgColor') el.style.backgroundColor = value;
-            if (prop === 'textColor') el.style.color = value;
-            break;
-        case 'input':
-            const inputEl = el.querySelector('input');
-            if (prop === 'placeholder') inputEl.placeholder = value;
-            if (prop === 'bgColor') {
-                el.style.backgroundColor = value;
-                inputEl.style.backgroundColor = value;
-            }
-            break;
-        case 'card':
-            if (prop === 'title') el.querySelector('[data-prop="title"]').textContent = value;
-            if (prop === 'content') el.querySelector('[data-prop="content"]').textContent = value;
-            break;
-    }
-}
-
-preview.addEventListener('click', (e) => {
-    if (e.target === preview) {
-        deselectComponent();
-    }
-});
-
-
-// ==== Update Empty State ====
-function updateEmptyState() {
-  if (preview.children.length === 0) {
-    preview.classList.add('empty');
-  } else {
-    preview.classList.remove('empty');
-  }
-}
-
-// ==== Clear Preview ====
-clearPreviewBtn.addEventListener('click', () => {
-  if (preview.children.length === 0) {
-    showToast('Preview area is already empty', 'warning');
-    return;
-  }
-  
-  if (confirm('Are you sure you want to clear all components?')) {
-    preview.innerHTML = '';
-    preview.classList.add('empty');
-    projectComponents = [];
-    deselectComponent();
-    logTerminal('Cleared all components from preview', 'info');
-    showToast('All components cleared', 'warning');
-  }
-});
-
-// ==== Export Project ====
-exportProjectBtn.addEventListener('click', () => {
-  if (projectComponents.length === 0) {
-    showToast('No components to export', 'error');
-    return;
-  }
-  
-  const projectCode = generateProjectCode();
-  exportCode.value = projectCode;
-  exportModal.classList.add('active');
-  logTerminal('Project export ready', 'success');
-});
-
-// ==== Generate Project Code ====
-function generateProjectCode() {
-  let code = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Web3 App</title>
-  <style>
-    body {
-      font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-      background: #0f172a;
-      color: #f8fafc;
-      padding: 20px;
-    }
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    .preview-canvas {
-      position: relative;
-      min-height: 600px;
-      border: 1px dashed #334155;
-      border-radius: 8px;
-      margin-top: 20px;
-    }
-    .component {
-      position: absolute;
-      /* Default styles are overridden by inline styles */
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>My Web3 App</h1>
-    <p>Generated with Web3 App Builder Pro</p>
-    <hr>
-    <div class="preview-canvas">
-`;
-
-  projectComponents.forEach(comp => {
-    let positionStyle = `left: ${comp.x}px; top: ${comp.y}px;`;
-    let layoutStyle = `padding: ${comp.properties.padding}; margin: ${comp.properties.margin}; border: ${comp.properties.border}; border-radius: ${comp.properties.borderRadius};`;
-    
-    switch(comp.type) {
-      case 'button':
-        let btnContainerStyle = `background-color: ${comp.properties.bgColor};`;
-        let innerBtnStyle = `background: transparent; color: ${comp.properties.textColor}; border: none; cursor: pointer; width: 100%; height: 100%; font-size: inherit; font-family: inherit;`;
-        code += `
-    <div class="component" style="${positionStyle} ${layoutStyle} ${btnContainerStyle}">
-      <button style="${innerBtnStyle}">
-        ${comp.properties.text}
-      </button>
     </div>
-`;
-        break;
-      case 'input':
-        let inputContainerStyle = `background-color: ${comp.properties.bgColor};`;
-        let innerInputStyle = `background: transparent; color: white; width: 100%; height: 100%; border: none; text-align: center; font-size: inherit; font-family: inherit;`;
-        code += `
-    <div class="component" style="${positionStyle} ${layoutStyle} ${inputContainerStyle}">
-      <input type="text" placeholder="${comp.properties.placeholder}" style="${innerInputStyle}">
-    </div>
-`;
-        break;
-      case 'card':
-        code += `
-    <div class="component" style="${positionStyle} ${layoutStyle} background: #252836;">
-      <h3>${comp.properties.title}</h3>
-      <p>${comp.properties.content}</p>
-    </div>
-`;
-        break;
-      default:
-        code += `
-    <div class="component" style="${positionStyle} ${layoutStyle} background: #252836;">
-      <h3>${comp.type.charAt(0).toUpperCase() + comp.type.slice(1)} Component</h3>
-      <p>This is a ${comp.type} component.</p>
-    </div>
-`;
-    }
-  });
 
-  code += `
-    </div>
-  </div>
-</body>
-</html>`;
-
-  return code;
-}
-
-// ==== Copy Code ====
-copyCodeBtn.addEventListener('click', () => {
-  exportCode.select();
-  document.execCommand('copy');
-  showToast('Code copied to clipboard');
-  logTerminal('Project code copied to clipboard', 'success');
-});
-
-// ==== Download Code ====
-downloadCodeBtn.addEventListener('click', () => {
-  const blob = new Blob([exportCode.value], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'web3-app.html';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  
-  showToast('Project downloaded successfully');
-  logTerminal('Project downloaded as web3-app.html', 'success');
-  exportModal.classList.remove('active');
-});
-
-
-// ==== Save & Load Layout ====
-function saveLayout() {
-    if (projectComponents.length === 0) {
-        showToast('Nothing to save!', 'warning');
-        return;
-    }
-    const componentsToSave = projectComponents.map(comp => ({
-        id: comp.id,
-        type: comp.type,
-        x: comp.x,
-        y: comp.y,
-        properties: comp.properties
-    }));
-    
-    localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(componentsToSave));
-    logTerminal('Layout saved to local storage', 'success');
-    showToast('Layout Saved');
-}
-
-function loadLayout() {
-    const savedLayoutJSON = localStorage.getItem(LAYOUT_STORAGE_KEY);
-    if (!savedLayoutJSON) {
-        showToast('No saved layout found', 'error');
-        return;
-    }
-
-    if (projectComponents.length > 0 && !confirm('This will replace your current layout. Are you sure?')) {
-        return;
-    }
-
-    // Clear current state
-    preview.innerHTML = '';
-    projectComponents = [];
-    deselectComponent();
-
-    const savedComponents = JSON.parse(savedLayoutJSON);
-    let maxId = 0;
-    
-    savedComponents.forEach(compData => {
-        recreateComponentFromData(compData);
-        const idNum = parseInt(compData.id.split('-')[1]);
-        if (idNum > maxId) {
-            maxId = idNum;
-        }
-    });
-    
-    componentCount = maxId; // To avoid ID clashes with new components
-    updateEmptyState();
-    logTerminal('Layout loaded from local storage', 'success');
-    showToast('Layout Loaded');
-}
-
-function recreateComponentFromData(data) {
-    const { id, type, x, y, properties } = data;
-
-    const componentEl = document.createElement('div');
-    componentEl.className = 'preview-component fade-in';
-    componentEl.draggable = true;
-    componentEl.id = id;
-    componentEl.dataset.type = type;
-    componentEl.style.left = `${x}px`;
-    componentEl.style.top = `${y}px`;
-    
-    // Apply layout styles from saved data, with fallbacks for older layouts
-    componentEl.style.padding = properties.padding || '15px';
-    componentEl.style.margin = properties.margin || '0px';
-    componentEl.style.border = properties.border || '2px dashed rgba(110, 142, 251, 0.5)';
-    componentEl.style.borderRadius = properties.borderRadius || '8px';
-
-    const componentData = {
-        id: id,
-        type: type,
-        x: x,
-        y: y,
-        properties: properties,
-        element: componentEl
-    };
-
-    const removeBtn = document.createElement('button');
-    removeBtn.className = 'remove-btn';
-    removeBtn.innerHTML = '<i class="fas fa-times"></i>';
-    removeBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        componentEl.remove();
-        updateEmptyState();
-        logTerminal(`Removed ${type} component`, 'info');
-        showToast(`Component removed`, 'warning');
-        projectComponents = projectComponents.filter(comp => comp.id !== id);
-        if (selectedComponentId === id) {
-            deselectComponent();
-        }
-    });
-
-    const contentSpan = document.createElement('span');
-
-    switch(type) {
-        case 'button':
-            contentSpan.innerHTML = `<i class="fas fa-hand-pointer"></i><span data-prop="text">${properties.text}</span>`;
-            componentEl.style.backgroundColor = properties.bgColor;
-            componentEl.style.color = properties.textColor;
-            break;
-        case 'input':
-            contentSpan.innerHTML = `<i class="fas fa-font"></i><input type="text" placeholder="${properties.placeholder}" style="background-color: ${properties.bgColor}; color: white; border: none; text-align: center; pointer-events: none;" readonly>`;
-            componentEl.style.backgroundColor = properties.bgColor;
-            break;
-        case 'card':
-            contentSpan.innerHTML = `<div style="text-align: left; width: 100%;"><h4 data-prop="title">${properties.title}</h4><p data-prop="content">${properties.content}</p></div>`;
-            break;
-        case 'slider':
-            contentSpan.innerHTML = '<i class="fas fa-sliders-h"></i><span>Range Slider</span>';
-            break;
-        case 'navbar':
-            contentSpan.innerHTML = '<i class="fas fa-bars"></i><span>Navigation</span>';
-            break;
-        case 'modal':
-            contentSpan.innerHTML = '<i class="fas fa-window-maximize"></i><span>Modal</span>';
-            break;
-        case 'table':
-            contentSpan.innerHTML = '<i class="fas fa-table"></i><span>Data Table</span>';
-            break;
-        case 'chart':
-            contentSpan.innerHTML = '<i class="fas fa-chart-bar"></i><span>Chart</span>';
-            break;
-    }
-    
-    componentEl.appendChild(contentSpan);
-    componentEl.appendChild(removeBtn);
-
-    componentEl.addEventListener('dragstart', e => {
-        e.dataTransfer.setData('text/plain', id);
-        componentEl.style.opacity = '0.5';
-        componentEl.style.cursor = 'grabbing';
-    });
-    
-    componentEl.addEventListener('dragend', () => {
-        componentEl.style.opacity = '1';
-        componentEl.style.cursor = 'grab';
-    });
-    
-    componentEl.addEventListener('click', (e) => {
-        e.stopPropagation();
-        selectComponent(id);
-    });
-
-    preview.appendChild(componentEl);
-    projectComponents.push(componentData);
-}
-
-saveLayoutBtn.addEventListener('click', saveLayout);
-loadLayoutBtn.addEventListener('click', loadLayout);
-
-
-// ==== Close modals when clicking outside ====
-document.addEventListener('click', (e) => {
-  if (e.target.classList.contains('modal')) {
-    e.target.classList.remove('active');
-  }
-});
-
-// ==== Initial Terminal Message ====
-setTimeout(() => {
-  logTerminal('Web3 App Builder Pro initialized', 'success');
-  logTerminal('Drag components to the preview area to start building', 'info');
-  logTerminal('Connect your wallet for advanced features', 'warning');
-}, 500);
-</script>
+    <script type="module" src="index.tsx"></script>
 </body>
 </html>
