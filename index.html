@@ -1,461 +1,241 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-t">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NEMODIAN COREMOVEMENT 202X — Unified AI-DEX GUI (Single File)</title>
-<link rel="stylesheet" href="index.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.14.0/gsap.min.js"></script>
-<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BITBOY AI::DEX — Unified Tool 202X</title>
+    <!-- Vanta.js, GSAP, jQuery, Marked, FontAwesome -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="index.css">
+    <script type="importmap">
+    {
+      "imports": {
+        "qrcode": "https://aistudiocdn.com/qrcode@^1.5.4",
+        "@web3modal/standalone": "https://aistudiocdn.com/@web3modal/standalone@^2.4.3",
+        "bip39": "https://aistudiocdn.com/bip39@^3.1.0"
+      }
+    }
+    </script>
 </head>
-
 <body>
-<div class="wrapper">
-  <canvas class="fullscreen-adapter" id="vanta-canvas"></canvas>
-  
-  <!-- Parallax Background Layers -->
-  <div class="parallax-layer"></div>
-  <div class="parallax-layer"></div>
-  <div class="parallax-layer"></div>
-  <div class="parallax-layer"></div>
-  <div class="parallax-layer"></div>
-  <div class="parallax-layer"></div>
-  <div class="parallax-layer"></div>
-  <div class="parallax-layer"></div>
-  <div class="parallax-layer"></div>
-  <div class="parallax-layer"></div>
-  <div class="parallax-layer"></div>
-  <div class="parallax-layer"></div>
-
-  <div class="content">
-    <header class="main-header">
-        <div class="stack" style="gap: 4px;">
-            <h1>NEMODIAN COREMOVEMENT 202X</h1>
-            <p class="small">AI STRATEGY-NFT:AGENT // <br/>Author: Aris Arjuna Noorsanto <exe.opcode@gmail.com></p>
-        </div>
-        <div id="header-wallet-controls" class="header-wallet-controls">
-            <div id="header-wallet-info" style="display: none;">
-                <span id="header-wallet-balance" class="mono"></span>
-                <span id="header-wallet-network" class="tag"></span>
-                <span id="header-wallet-address" class="mono"></span>
-                <button id="show-qr-btn" data-tooltip="Show Address QR Code" style="display: none;"></button>
-            </div>
-            <div id="wallet-status-indicator" class="status-dot disconnected"></div>
-            <button id="header-connect-btn">Connect Wallet</button>
-            <button id="header-disconnect-btn" style="display: none; background: rgba(255,51,0,0.2); color:#ff3300; box-shadow:0 0 6px #ff3300;">Disconnect</button>
-        </div>
-    </header>
+    <div id="vanta-canvas" class="fullscreen-adapter"></div>
+    <div class="parallax-bg">
+        <div class="parallax-layer"></div><div class="parallax-layer"></div><div class="parallax-layer"></div><div class="parallax-layer"></div>
+        <div class="parallax-layer"></div><div class="parallax-layer"></div><div class="parallax-layer"></div><div class="parallax-layer"></div>
+    </div>
     
-    <div class="prominent-buttons-container">
-        <button class="prominent-btn" data-tab-target="dex-tab-hrc">HRC203X</button>
-        <button class="prominent-btn" data-tab-target="dex-tab-nft">NFT Friend</button>
-    </div>
+    <main class="container stack">
+        <header class="main-header">
+            <h1 class="glitch" data-text="BITBOY AI::DEX">BITBOY AI::DEX</h1>
+            <p>Unified Command & Control Interface // 202X Rebasing</p>
+        </header>
 
-    <div class="card" style="margin-bottom: 16px; padding: 8px;">
-        <div id="tradingview-widget-container"></div>
-    </div>
-
-    <div class="grid">
-
-      <!-- Left Column -->
-      <div class="stack">
-        <div class="card" id="main-card">
-          <div class="tabs">
-            <button class="tab-button active" data-tab="dex-tab-swap">BITBOY AI-DEX</button>
-            <button class="tab-button" data-tab="dex-tab-hrc">HRC203X</button>
-            <button class="tab-button" data-tab="dex-tab-nft">NFT Friend</button>
-            <button class="tab-button" data-tab="dex-tab-crypto">Crypto Ops</button>
-            <button class="tab-button" data-tab="dex-tab-seed">Seed Tool</button>
-            <button class="tab-button" data-tab="dex-tab-ai-chat">AI Chat</button>
-            <button class="tab-button" data-tab="dex-tab-system">System</button>
-          </div>
-
-          <!-- DEX SWAP TAB -->
-          <div id="dex-tab-swap" class="tab-content active">
-            <div class="stack">
-              <div class="row dex-header">
-                <h3>Decentralized Exchange</h3>
-              </div>
-              <p class="small">Connect your wallet using the button in the header to begin trading.</p>
-              <hr class="sep">
-              <div class="stack" style="gap:16px;">
-                  <div class="row">
-                    <input type="number" id="from-amount" placeholder="0.0">
-                    <div class="token-select-wrapper" style="flex-grow: 1;">
-                      <select id="from-token">
-                        <option>Loading tokens...</option>
-                      </select>
-                      <button id="refresh-from-token-btn" class="refresh-btn" data-tooltip="Refresh token list">&#x21bb;</button>
-                    </div>
-                  </div>
-                  <div class="row">
-                    <input type="number" id="to-amount" placeholder="0.0" disabled>
-                    <div class="token-select-wrapper" style="flex-grow: 1;">
-                      <select id="to-token">
-                         <option>Loading tokens...</option>
-                      </select>
-                      <button id="refresh-to-token-btn" class="refresh-btn" data-tooltip="Refresh token list">&#x21bb;</button>
-                    </div>
-                  </div>
-                  <button id="swap-btn" disabled>Swap</button>
-                  <button id="ai-signal-btn" disabled>Get AI Trade Signal</button>
-              </div>
-              <hr class="sep">
-              <div class="stack" style="gap: 16px;" data-tooltip="Set the leverage for futures trading. High leverage increases both potential profit and risk.">
-                  <h4>Leveraged Futures</h4>
-                  <div class="row" style="gap: 20px;">
-                      <div class="stack" style="flex: 1;">
-                          <label for="leverage-timeframe" class="small">Timeframe</label>
-                          <select id="leverage-timeframe">
-                              <option value="1min">1 Minute</option>
-                              <option value="5min">5 Minutes</option>
-                              <option value="10min">10 Minutes</option>
-                              <option value="15min">15 Minutes</option>
-                              <option value="30min">30 Minutes</option>
-                              <option value="45min">45 Minutes</option>
-                              <option value="1h">1 Hour</option>
-                              <option value="2h">2 Hours</option>
-                              <option value="8h">8 Hours</option>
-                              <option value="12h">12 hours</option>
-                              <option value="1d">1 Day</option>
-                              <option value="1w">1 Week</option>
-                              <option value="2w">2 Weeks</option>
-                              <option value="1m">1 Month</option>
-                              <option value="2m">2 Months</option>
-                              <option value="3m">3 Months</option>
-                              <option value="4m">4 Months</option>
-                              <option value="6m">6 Months</option>
-                              <option value="1y">1 Year</option>
-                              <option value="5y">5 Years</option>
-                              <option value="10y">10 Years</option>
-                          </select>
-                      </div>
-                      <div class="stack" style="flex: 2;">
-                          <label for="leverage-slider" class="small">Leverage: <span id="leverage-value" class="mono">100x</span></label>
-                          <input type="range" id="leverage-slider" min="1" max="200" value="100">
-                           <div id="leverage-presets" class="row" style="gap: 8px; margin-top: 8px;">
-                              <button class="leverage-preset-btn" data-value="10">10%</button>
-                              <button class="leverage-preset-btn" data-value="25">25%</button>
-                              <button class="leverage-preset-btn" data-value="33">33%</button>
-                              <button class="leverage-preset-btn" data-value="50">50%</button>
-                              <button class="leverage-preset-btn" data-value="75">75%</button>
-                              <button class="leverage-preset-btn" data-value="100">100%</button>
-                              <button class="leverage-preset-btn" data-value="200">200%</button>
-                          </div>
-                      </div>
-                  </div>
-                  <div class="trade-btn-container">
-                      <button id="buy-long-btn" class="trade-btn buy-btn" disabled>BUY / LONG</button>
-                      <button id="sell-short-btn" class="trade-btn sell-btn" disabled>SELL / SHORT</button>
-                  </div>
-              </div>
+        <section id="main-card" class="card prominent-card">
+            <div class="card-header">
+                <nav class="tabs">
+                    <button class="tab-button active" data-tab="dashboard-tab"><i class="fas fa-tachometer-alt"></i> Dashboard</button>
+                    <button class="tab-button" data-tab="dex-tools-tab"><i class="fas fa-exchange-alt"></i> DEX Tools</button>
+                    <button class="tab-button" data-tab="ai-chat-tab"><i class="fas fa-robot"></i> AI Chat</button>
+                    <button class="tab-button" data-tab="kanban-tab"><i class="fas fa-tasks"></i> Task Board</button>
+                    <button class="tab-button" data-tab="settings-tab"><i class="fas fa-cog"></i> Settings</button>
+                </nav>
             </div>
-          </div>
-          
-          <!-- HRC203X TAB -->
-          <div id="dex-tab-hrc" class="tab-content">
-              <div class="stack">
-                  <h3>HRC203X: Pools & CRM</h3>
-                  <p class="small">Manage projects, interest pools, and contacts using this integrated Kanban board. Data is saved locally.</p>
-                  <hr class="sep">
-                  <div id="kanban-container" class="stack">
-                      <div class="stack" style="gap: 8px; margin-bottom: 16px;">
-                          <input type="text" id="new-task-title" placeholder="New Task Title...">
-                          <textarea id="new-task-desc" rows="2" placeholder="Task description (optional)..."></textarea>
-                          <button id="add-task-btn" class="button-secondary" style="align-self: flex-start;">Add Task to Backlog</button>
-                      </div>
-                      <div id="kanban-board" class="kanban-board">
-                          <div class="kanban-column" id="kanban-backlog" data-status="backlog">
-                              <h4>Backlog</h4>
-                              <div class="kanban-tasks"></div>
-                          </div>
-                          <div class="kanban-column" id="kanban-inprogress" data-status="inprogress">
-                              <h4>In Progress</h4>
-                              <div class="kanban-tasks"></div>
-                          </div>
-                          <div class="kanban-column" id="kanban-completed" data-status="completed">
-                              <h4>Completed</h4>
-                              <div class="kanban-tasks"></div>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-          </div>
-          
-          <!-- NFT FRIEND TAB -->
-          <div id="dex-tab-nft" class="tab-content">
-              <div class="stack">
-                  <h3>NFT Friend</h3>
-                  <p class="small">Explore your NFT-roots with this interactive 3D carousel.</p>
-                  <hr class="sep">
-                  <div id="nft-carousel-container">
-                      <div class="carousel-scene">
-                          <div class="carousel">
-                              <!-- NFT cards will be injected here by JS -->
-                          </div>
-                      </div>
-                      <div class="carousel-controls">
-                          <button id="carousel-prev-btn">&lt; Prev</button>
-                          <button id="carousel-next-btn">Next &gt;</button>
-                      </div>
-                  </div>
-              </div>
-          </div>
-
-          <!-- CRYPTO TAB -->
-          <div id="dex-tab-crypto" class="tab-content">
-            <div class="stack" style="gap: 20px;">
-              <div data-tooltip="Generates a SHA-256 hash of the input text. This is a one-way cryptographic function.">
-                <h4>Hashing (SHA-256)</h4>
-                <div class="stack">
-                  <textarea id="hash-input" rows="3" placeholder="Enter text to hash..."></textarea>
-                  <button id="hash-btn">Generate Hash</button>
-                  <pre id="hash-output" class="mono" style="display:none;"></pre>
-                </div>
-              </div>
-              <hr class="sep">
-              <div data-tooltip="Performs AES-GCM symmetric encryption/decryption. Requires a password.">
-                <h4>Symmetric Encryption (AES-GCM)</h4>
-                <div class="stack">
-                  <textarea id="aes-input" rows="4" placeholder="Enter plaintext or Base64 ciphertext..."></textarea>
-                  <input type="password" id="aes-password" placeholder="Enter password...">
-                  <div class="row button-group-stretch">
-                    <button id="aes-encrypt-btn">Encrypt</button>
-                    <button id="aes-decrypt-btn">Decrypt</button>
-                  </div>
-                   <pre id="aes-output" class="mono" style="display:none;"></pre>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- SEED TOOL TAB -->
-          <div id="dex-tab-seed" class="tab-content">
-            <div class="stack" style="gap: 20px;">
-                <div class="warning-box">
-                    <h4><span class="mono">[ SECURITY WARNING ]</span></h4>
-                    <p class="small">NEVER enter a seed phrase from a wallet containing real funds into any online tool, including this one. This tool is for educational purposes only. It operates entirely offline within your browser and does not send your seed phrase anywhere. For maximum security, use it on an air-gapped computer.</p>
-                </div>
-                <div>
-                    <h4>BIP39 Mnemonic Seed Parser</h4>
-                    <div class="stack">
-                        <textarea id="seed-phrase-input" rows="4" placeholder="Enter 12, 15, 18, 21, or 24 word mnemonic phrase here..."></textarea>
-                        <button id="analyze-seed-btn">Analyze Seed</button>
-                        <div id="seed-analysis-output" class="stack" style="display:none; gap: 8px; margin-top: 10px;"></div>
-                    </div>
-                </div>
-            </div>
-          </div>
-          
-          <!-- AI CHAT TAB -->
-          <div id="dex-tab-ai-chat" class="tab-content">
-              <div class="stack">
-                  <h3>Ollama AI Chat</h3>
-                  <p class="small">Chat with your configured local AI model. Conversation history is saved locally.</p>
-                  <hr class="sep">
-                  <div class="chat-container">
-                      <div id="ai-chat-history" class="chat-history">
-                          <!-- Chat messages will be injected here -->
-                      </div>
-                      <form id="ai-chat-form" class="chat-form">
-                          <input type="text" id="ai-chat-input" placeholder="Message your AI..." autocomplete="off" required>
-                          <button type="submit">Send</button>
-                      </form>
-                  </div>
-              </div>
-          </div>
-
-
-          <!-- SYSTEM TAB -->
-          <div id="dex-tab-system" class="tab-content">
-             <div class="stack" style="gap: 20px;">
-                <div>
-                  <h4>Local AI Settings</h4>
-                  <div class="stack" style="gap: 12px;">
-                      <div class="stack" style="gap: 4px;" data-tooltip="The API endpoint for your local Ollama instance. Default: http://localhost:11434">
-                          <label for="ollama-api-url" class="small mono">Ollama API Endpoint</label>
-                          <input type="text" id="ollama-api-url">
-                      </div>
-                      <div class="row" style="gap: 8px;">
-                        <div class="stack" style="gap: 4px; flex-grow: 1;" data-tooltip="The name of the model to use. Can be typed or selected below.">
-                            <label for="ollama-model-name" class="small mono">Model Name</label>
-                            <input type="text" id="ollama-model-name" placeholder="e.g., llama3, codellama">
+            <div class="card-body">
+                <!-- Dashboard Tab -->
+                <div id="dashboard-tab" class="tab-content active">
+                    <div class="grid two-cols">
+                        <div class="stack">
+                             <div class="card">
+                                <h3><i class="fas fa-terminal"></i> System Log</h3>
+                                <div id="terminal" class="terminal-output"><div id="termOutput"></div></div>
+                            </div>
+                            <div class="card">
+                                <h3><i class="fas fa-wallet"></i> Wallet Tools</h3>
+                                <div class="stack">
+                                    <button id="connectWalletBtn"><i class="fas fa-plug"></i> Connect Wallet</button>
+                                    <div id="walletInfo" class="wallet-info" style="display: none;">
+                                        <p><strong>Status:</strong> <span id="walletStatus">Disconnected</span></p>
+                                        <p><strong>Address:</strong> <span id="walletAddress">N/A</span></p>
+                                        <p><strong>Balance:</strong> <span id="walletBalance">N/A</span></p>
+                                        <button id="disconnectWalletBtn" class="small-btn button-secondary">Disconnect</button>
+                                    </div>
+                                    <hr>
+                                    <h4><i class="fas fa-seedling"></i> Generate Mnemonic</h4>
+                                    <div class="form-group">
+                                        <select id="mnemonic-strength">
+                                            <option value="128">12 words</option>
+                                            <option value="256">24 words</option>
+                                        </select>
+                                        <button id="generateMnemonicBtn">Generate</button>
+                                    </div>
+                                    <div id="mnemonic-display" class="panel" style="display: none;"></div>
+                                </div>
+                            </div>
                         </div>
-                        <button id="fetch-ollama-models-btn" style="align-self: flex-end;">Fetch Models</button>
-                      </div>
-                      <div class="stack" style="gap: 4px;" data-tooltip="Select from available models after fetching.">
-                          <label for="ollama-model-select" class="small mono">Available Models</label>
-                          <select id="ollama-model-select">
-                              <option value="">-- Fetch models first --</option>
-                          </select>
-                      </div>
-                      <div class="row" style="gap: 16px;">
-                          <div class="stack" style="gap: 4px; flex: 1;" data-tooltip="Controls randomness. Lower values are more deterministic. Default: 0.8">
-                              <label for="ollama-temperature" class="small mono">Temperature</label>
-                              <input type="number" id="ollama-temperature" step="0.1" min="0" max="2">
-                          </div>
-                          <div class="stack" style="gap: 4px; flex: 1;" data-tooltip="Max tokens to generate. Use -1 for infinite. Default: -1">
-                              <label for="ollama-max-tokens" class="small mono">Max Tokens (num_predict)</label>
-                              <input type="number" id="ollama-max-tokens" step="1" min="-1">
-                          </div>
-                      </div>
-                  </div>
-                </div>
-                <hr class="sep">
-                <div>
-                    <h4>API Settings & Status</h4>
-                    <div class="stack" style="gap: 12px;">
-                        <div class="stack" style="gap: 4px;" data-tooltip="Enter your CoinGecko API Key (Demo or Pro) for higher rate limits. This will be saved locally.">
-                            <label for="coingecko-api-key" class="small mono">CoinGecko API Key</label>
-                            <input type="text" id="coingecko-api-key" placeholder="Optional API Key...">
+                        <div class="stack">
+                            <div class="card">
+                                <h3><i class="fas fa-chart-line"></i> Market Overview</h3>
+                                <div id="tradingview-widget-container" style="height:400px;"></div>
+                            </div>
+                            <div class="card">
+                                <h3><i class="fas fa-tasks"></i> Recurring Tasks</h3>
+                                <div id="recurring-tasks-list" class="task-list"></div>
+                                <div class="form-group">
+                                    <input type="text" id="new-recurring-task" placeholder="New recurring task...">
+                                    <button id="add-recurring-task-btn">+</button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="row">
-                           <button id="check-api-btn">Check CoinGecko API</button>
-                           <p id="api-status" class="small mono"></p>
-                        </div>
-                         <button id="save-settings-btn" style="align-self: flex-start;">Save All Settings</button>
                     </div>
                 </div>
-                <hr class="sep">
-                <div>
-                  <h4>Data Management</h4>
-                  <div class="stack">
-                      <button id="clear-data-btn" style="background: rgba(255,51,0,0.2); color:#ff3300; box-shadow:0 0 6px #ff3300;">Clear All Local Data</button>
-                      <p class="small">This will delete all saved recurring tasks and Kanban board data. This action cannot be undone.</p>
-                  </div>
+                <!-- DEX Tools Tab -->
+                <div id="dex-tools-tab" class="tab-content">
+                    <div class="grid two-cols">
+                        <div class="stack">
+                            <div class="card">
+                                <h3><i class="fas fa-swatchbook"></i> Swap Tokens</h3>
+                                <div class="form-group">
+                                    <label for="from-token">From:</label>
+                                    <input type="text" id="from-token" placeholder="e.g., ETH" value="ETH">
+                                </div>
+                                <div class="form-group">
+                                    <label for="to-token">To:</label>
+                                    <input type="text" id="to-token" placeholder="e.g., BTC" value="WBTC">
+                                </div>
+                                <div class="form-group">
+                                    <label for="leverage">Leverage:</label>
+                                    <select id="leverage">
+                                        <option value="1">1x</option>
+                                        <option value="5">5x</option>
+                                        <option value="10">10x</option>
+                                        <option value="20">20x</option>
+                                    </select>
+                                </div>
+                                <button id="swap-btn">Execute Swap</button>
+                            </div>
+                            <div class="card" id="nft-carousel-container">
+                                <h3><i class="far fa-images"></i> NFT Carousel</h3>
+                                <div class="carousel-scene">
+                                    <div class="carousel" id="nft-carousel"></div>
+                                </div>
+                                <div class="carousel-controls">
+                                    <button id="prev-btn">&lt;</button>
+                                    <button id="next-btn">&gt;</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                             <h3><i class="fas fa-qrcode"></i> QR Code Generator</h3>
+                             <div class="stack">
+                                <textarea id="qr-input" placeholder="Enter text or URL for QR code..."></textarea>
+                                <button id="generate-qr-btn">Generate QR Code</button>
+                                <div id="qr-output" class="qr-container"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- AI Chat Tab -->
+                <div id="ai-chat-tab" class="tab-content">
+                    <div class="chat-container">
+                        <div class="chat-history" id="ai-chat-history"></div>
+                        <form id="ai-chat-form" class="chat-form">
+                            <textarea id="ai-chat-input" placeholder="Ask the AI anything..." rows="1"></textarea>
+                            <button type="submit"><i class="fas fa-paper-plane"></i></button>
+                        </form>
+                    </div>
+                </div>
+                <!-- Kanban Tab -->
+                <div id="kanban-tab" class="tab-content">
+                    <div id="kanban-board" class="kanban-board">
+                         <div class="kanban-column" data-status="todo">
+                            <h3 class="kanban-column-title">To Do</h3>
+                            <div class="kanban-cards" data-status="todo"></div>
+                            <div class="add-card-form">
+                                <input type="text" class="add-card-input" placeholder="New task...">
+                                <button class="add-card-btn">+</button>
+                            </div>
+                        </div>
+                         <div class="kanban-column" data-status="inprogress">
+                            <h3 class="kanban-column-title">In Progress</h3>
+                            <div class="kanban-cards" data-status="inprogress"></div>
+                        </div>
+                         <div class="kanban-column" data-status="done">
+                            <h3 class="kanban-column-title">Done</h3>
+                            <div class="kanban-cards" data-status="done"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Settings Tab -->
+                <div id="settings-tab" class="tab-content">
+                    <h3><i class="fas fa-cogs"></i> Configuration</h3>
+                    <div class="grid two-cols">
+                        <div class="stack">
+                             <div class="card">
+                                <h4>API Keys</h4>
+                                <div class="form-group">
+                                    <label for="coingecko-api-key">CoinGecko API Key</label>
+                                    <input type="password" id="coingecko-api-key" placeholder="Enter your key...">
+                                </div>
+                            </div>
+                             <div class="card">
+                                <h4>Data Management</h4>
+                                <button id="export-settings-btn">Export Settings</button>
+                                <button id="import-settings-btn" class="button-secondary">Import Settings</button>
+                                <input type="file" id="import-file-input" style="display:none;" accept=".json">
+                                <hr>
+                                <button id="clear-data-btn" class="button-danger">Clear All Local Data</button>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <h4>Ollama AI Configuration</h4>
+                             <div class="form-group">
+                                <label for="ollama-api-url">Ollama API URL</label>
+                                <input type="text" id="ollama-api-url" placeholder="http://localhost:11434/api/chat">
+                            </div>
+                             <div class="form-group">
+                                <label for="ollama-model-name">Model Name</label>
+                                <input type="text" id="ollama-model-name" placeholder="llama3">
+                            </div>
+                             <div class="form-group">
+                                <label for="ollama-temperature">Temperature</label>
+                                <input type="range" id="ollama-temperature" min="0" max="1" step="0.1" value="0.7">
+                                <span id="ollama-temperature-value">0.7</span>
+                            </div>
+                             <div class="form-group">
+                                <label for="ollama-max-tokens">Max Tokens</label>
+                                <input type="number" id="ollama-max-tokens" placeholder="2048" min="1">
+                            </div>
+                        </div>
+                    </div>
+                    <button id="save-settings-btn">Save Settings</button>
                 </div>
             </div>
-          </div>
-        </div>
-      </div>
+        </section>
 
-      <!-- Right Column -->
-      <div class="stack">
-        <div class="card">
-          <h3>Recurring Tasks</h3>
-          <div class="stack">
-            <form id="recurring-task-form" class="row">
-              <input type="text" id="recurring-task-input" placeholder="New recurring task..." style="flex-grow: 1;" required>
-              <select id="recurring-task-select">
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-              <button type="submit">Add</button>
-            </form>
-            <div id="recurring-task-list" class="stack" style="gap: 8px;">
-              <!-- Tasks will be rendered here by JS -->
-            </div>
-          </div>
+        <!-- Prominent Buttons for Mobile -->
+        <div class="prominent-buttons">
+            <button class="prominent-btn active" data-tab="dashboard-tab"><i class="fas fa-tachometer-alt"></i></button>
+            <button class="prominent-btn" data-tab="dex-tools-tab"><i class="fas fa-exchange-alt"></i></button>
+            <button class="prominent-btn" data-tab="ai-chat-tab"><i class="fas fa-robot"></i></button>
+            <button class="prominent-btn" data-tab="kanban-tab"><i class="fas fa-tasks"></i></button>
+            <button class="prominent-btn" data-tab="settings-tab"><i class="fas fa-cog"></i></button>
         </div>
-        <div class="card">
-          <h3>
-            <span>AI Analyst Core</span>
-            <div id="ai-status-indicator" class="status-dot disconnected" data-tooltip="AI Core Status"></div>
-          </h3>
-          <p class="small">The AI chat interface and system console have been merged into the new persistent terminal.</p>
-          <p class="small">You can drag the terminal and the HUD widgets. Right-click them for more options.</p>
-        </div>
-        <div class="card">
-          <h3>Hot Pairs (Live)</h3>
-          <div id="hot-pairs-list" class="stack">
-            <p class="small">Loading hot pairs from CoinGecko...</p>
-          </div>
-        </div>
-      </div>
+    </main>
 
+    <!-- Modal Structure -->
+    <div id="generic-modal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close-btn">&times;</button>
+            <h3 id="modal-title">Modal Title</h3>
+            <div id="modal-body"></div>
+        </div>
     </div>
-  </div>
-</div>
-
-<!-- Connection Modal -->
-<div id="connect-modal" class="modal-overlay" style="display: none;">
-  <div class="modal-content card">
-    <h3>Connect Wallet</h3>
-    <p class="small">Choose your connection method.</p>
-    <hr class="sep">
-    <div class="stack">
-        <button id="connect-metamask-btn" class="modal-button">MetaMask / Browser Wallet</button>
-        <button id="connect-walletconnect-btn" class="modal-button">WalletConnect</button>
-        <button id="connect-cli-btn" class="modal-button button-secondary">CLI-Wallet (Experimental)</button>
-    </div>
-    <button id="close-modal-btn" class="modal-close-btn">X</button>
-  </div>
-</div>
-
-<!-- QR Code Modal -->
-<div id="qr-modal" class="modal-overlay" style="display: none;">
-  <div class="modal-content card">
-    <h3>Your Wallet Address</h3>
-    <p class="small">Scan this QR code to send funds to your wallet.</p>
-    <hr class="sep">
-    <div class="stack" style="align-items: center; gap: 16px;">
-        <canvas id="qr-code-canvas"></canvas>
-        <pre id="qr-modal-address" class="mono" style="word-break: break-all; text-align: center; width: 100%;"></pre>
-    </div>
-    <button id="close-qr-modal-btn" class="modal-close-btn">X</button>
-  </div>
-</div>
-
-<!-- NFT Details Modal -->
-<div id="nft-details-modal" class="modal-overlay" style="display: none;">
-    <div class="modal-content card">
-        <div class="nft-modal-header">
-            <h3 id="nft-modal-title"></h3>
-            <p id="nft-modal-creator" class="small mono"></p>
-        </div>
-        <hr class="sep">
-        <div class="nft-modal-body">
-            <img id="nft-modal-image" src="" alt="NFT Image" class="nft-modal-image">
-            <div class="nft-modal-details">
-                <h4>Description</h4>
-                <p id="nft-modal-description" class="small"></p>
-                <h4>Traits</h4>
-                <div id="nft-modal-traits" class="nft-modal-traits"></div>
-                <h4>Market Price</h4>
-                <p id="nft-modal-price" class="mono big-mono"></p>
-            </div>
-        </div>
-        <button id="close-nft-modal-btn" class="modal-close-btn">X</button>
-    </div>
-</div>
-
-<!-- HUD & Terminal -->
-<div id="hudWidgets">
-  <div>⚡ AI HUD</div>
-  <div id="hudStatus">Status: Initializing...</div>
-</div>
-<div id="term">
-  <div id="termOutput"></div>
-  <div id="termSuggestionsContainer"><span id="termSuggestion"></span></div>
-  <input id="termInput" placeholder="Ask AI or type command..." autocomplete="off" />
-</div>
-<div id="hudMenu" class="ctxMenu">
-  <div id="hudReset">🔄 Reset Position</div>
-</div>
-<div id="termMenu" class="ctxMenu">
-  <div id="termClear">🧹 Clear Screen</div>
-  <div id="termCopy">📋 Copy All</div>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
-<!-- Import Map for ES Modules -->
-<script type="importmap">
-{
-  "imports": {
-    "bip39": "https://esm.run/bip39",
-    "@web3modal/standalone": "https://esm.run/@web3modal/standalone",
-    "qrcode": "https://esm.run/qrcode"
-  }
-}
-</script>
-
-<script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-<script type="module" src="index.tsx"></script>
-
+    
+    <script type="module" src="index.tsx"></script>
 </body>
 </html>
