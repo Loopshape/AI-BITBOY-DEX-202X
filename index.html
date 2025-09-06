@@ -11,7 +11,8 @@
   "imports": {
     "bip39": "https://aistudiocdn.com/bip39@^3.1.0",
     "@web3modal/standalone": "https://aistudiocdn.com/@web3modal/standalone@^2.4.3",
-    "qrcode": "https://aistudiocdn.com/qrcode@^1.5.4"
+    "qrcode": "https://aistudiocdn.com/qrcode@^1.5.4",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^0.14.2"
   }
 }
 </script>
@@ -32,55 +33,58 @@
                 <h1>DEX Builder</h1>
             </div>
             
-            <div class="wallet-section">
-                <div class="wallet-info" id="wallet-info">
-                    <div class="status">
-                        <div class="status-dot connected pulsing" id="wallet-status-indicator"></div>
-                        <span class="wallet-address" id="header-wallet-address">0x1234...5678</span>
+            <div class="header-actions">
+                 <button class="btn btn-secondary" id="reset-btn">
+                    <i class="fas fa-trash"></i> Reset Canvas
+                </button>
+                <button class="btn btn-secondary" id="open-admin-controls-btn">
+                    <i class="fas fa-brain"></i> AI Core
+                </button>
+                <div class="wallet-section">
+                    <div class="wallet-info" id="wallet-info">
+                        <div class="status">
+                            <div class="status-dot connected pulsing" id="wallet-status-indicator"></div>
+                            <span class="wallet-address" id="header-wallet-address">0x1234...5678</span>
+                        </div>
+                        <div class="wallet-balance" id="header-wallet-balance">0.00 ETH</div>
                     </div>
-                    <div class="wallet-balance" id="header-wallet-balance">0.00 ETH</div>
+                    
+                    <button class="btn btn-primary" id="header-connect-btn">
+                        <i class="fas fa-plug"></i> Connect Wallet
+                    </button>
+                    
+                    <button class="btn btn-secondary" id="header-disconnect-btn" style="display: none;">
+                        <i class="fas fa-times"></i> Disconnect
+                    </button>
                 </div>
-                
-                <button class="btn btn-primary" id="header-connect-btn">
-                    <i class="fas fa-plug"></i> Connect Wallet
-                </button>
-                
-                <button class="btn btn-secondary" id="header-disconnect-btn" style="display: none;">
-                    <i class="fas fa-times"></i> Disconnect
-                </button>
             </div>
         </header>
         
         <main class="app-builder">
             <aside class="left-column">
-                <div id="control-hub">
-                    <div class="hub-ring hub-ring-1"></div>
-                    <div class="hub-ring hub-ring-2"></div>
-                    <div class="hub-core">
-                        <div class="hub-button" id="deploy-btn" title="Deploy to Testnet">
-                            <i class="fas fa-rocket"></i>
-                        </div>
-                        <div class="hub-button" id="export-btn" title="Export Code">
-                            <i class="fas fa-download"></i>
-                        </div>
-                        <div class="hub-button" id="preview-btn" title="Live Preview">
-                            <i class="fas fa-play"></i>
-                        </div>
-                         <div class="hub-button" id="reset-btn" title="Reset">
-                            <i class="fas fa-trash"></i>
-                        </div>
+                <div class="panel" id="ai-genesis-panel">
+                    <h2 class="panel-title"><i class="fas fa-magic-wand-sparkles"></i> AI Genesis</h2>
+                    <div class="ai-genesis-controls">
+                        <textarea id="ai-genesis-prompt" placeholder="Describe a component to generate... e.g., 'a simple token swap interface' or 'a vertical token list with price and 24h change'"></textarea>
+                        <button id="ai-genesis-generate-btn" class="btn btn-primary">
+                            <i class="fas fa-bolt"></i> Generate
+                        </button>
+                    </div>
+                    <div id="ai-genesis-output-container" style="display: none;">
+                         <h3 class="panel-subtitle">Generated Component</h3>
+                         <div class="generated-code-wrapper">
+                            <pre><code id="ai-genesis-code"></code></pre>
+                            <div class="code-actions">
+                                <button id="ai-genesis-copy-btn" title="Copy Code"><i class="fas fa-copy"></i></button>
+                            </div>
+                         </div>
+                         <button id="ai-genesis-add-btn" class="btn btn-secondary">
+                            <i class="fas fa-plus-circle"></i> Add to Preview
+                        </button>
                     </div>
                 </div>
                 <div class="panel components-panel">
                     <h2 class="panel-title"><i class="fas fa-puzzle-piece"></i> Components</h2>
-                    <div class="component-item" data-type="token-list" draggable="true">
-                        <div class="component-icon"><i class="fas fa-coins"></i></div>
-                        <div><h3>Token List</h3><p>Display market pairs</p></div>
-                    </div>
-                    <div class="component-item" data-type="price-chart" draggable="true">
-                        <div class="component-icon"><i class="fas fa-chart-line"></i></div>
-                        <div><h3>Price Chart</h3><p>Candlestick chart</p></div>
-                    </div>
                     <div class="component-item" data-type="wallet-balance" draggable="true">
                         <div class="component-icon"><i class="fas fa-wallet"></i></div>
                         <div><h3>Wallet Balance</h3><p>User token display</p></div>
@@ -88,6 +92,28 @@
                     <div class="component-item" data-type="tx-history" draggable="true">
                         <div class="component-icon"><i class="fas fa-history"></i></div>
                         <div><h3>Transaction History</h3><p>Recent swaps list</p></div>
+                    </div>
+                    <div class="component-item" data-type="ai-assistant" draggable="true">
+                        <div class="component-icon"><i class="fas fa-robot"></i></div>
+                        <div><h3>AI Assistant</h3><p>Crypto knowledge bot</p></div>
+                    </div>
+
+                    <h3 class="panel-subtitle">Fundamental Elements</h3>
+                    <div class="component-item" data-type="info-framework" draggable="true">
+                        <div class="component-icon"><i class="fas fa-project-diagram"></i></div>
+                        <div><h3>Info Framework</h3><p>Display core metrics</p></div>
+                    </div>
+                    <div class="component-item" data-type="system-status" draggable="true">
+                        <div class="component-icon"><i class="fas fa-network-wired"></i></div>
+                        <div><h3>System Status</h3><p>Network health monitor</p></div>
+                    </div>
+                    <div class="component-item" data-type="block-explorer" draggable="true">
+                        <div class="component-icon"><i class="fas fa-cube"></i></div>
+                        <div><h3>Block Explorer</h3><p>Inspect blockchain data</p></div>
+                    </div>
+                    <div class="component-item" data-type="data-analysis" draggable="true">
+                        <div class="component-icon"><i class="fas fa-brain"></i></div>
+                        <div><h3>Data Analysis</h3><p>Market analysis tools</p></div>
                     </div>
                 </div>
             </aside>
@@ -189,6 +215,54 @@
                 <i class="fas fa-terminal wallet-icon"></i>
                 <div><h3>CLI Wallet</h3><p>Connect to local node</p></div>
             </div>
+        </div>
+    </div>
+
+    <!-- Admin Controls Modal -->
+    <div class="modal" id="admin-controls-modal">
+        <div class="admin-container">
+            <header class="admin-header">
+                <span>AI-BITBOY-DEX :: STRATEGIC SYNTHESIS CORE</span>
+                <div class="status-indicator">
+                    <div class="status-light"></div>
+                    <span>DATASTREAM ACTIVE</span>
+                </div>
+                 <button class="close-modal admin-close-btn">&times;</button>
+            </header>
+            <main class="admin-main-content">
+                <div id="market-intel-panel" class="admin-panel">
+                    <h2 class="admin-panel-title">MARKET INTELLIGENCE FEED</h2>
+                    <div class="intel-grid">
+                        <div class="data-point">
+                            <h3>BTC/USD PRICE</h3>
+                            <p id="admin-btc-price">$0.00</p>
+                        </div>
+                        <div class="data-point">
+                            <h3>24H CHANGE</h3>
+                            <p id="admin-btc-change" class="positive">+0.00%</p>
+                        </div>
+                        <div class="data-point">
+                            <h3>24H VOLUME</h3>
+                            <p id="admin-btc-volume">$0.0B</p>
+                        </div>
+                        <div class="data-point">
+                            <h3>SENTIMENT INDEX</h3>
+                            <p id="admin-sentiment" class="positive">50 (Neutral)</p>
+                        </div>
+                    </div>
+                    <div class="news-feed">
+                        <h3>REAL-TIME HEADLINES</h3>
+                        <p id="admin-news-item" class="news-item">Fetching latest market intel...</p>
+                    </div>
+                </div>
+                <div id="ai-synthesis-panel" class="admin-panel">
+                    <h2 class="admin-panel-title">AI SYNTHESIS CORE</h2>
+                    <div id="admin-directive-output" class="placeholder">Awaiting synthesis command...</div>
+                </div>
+            </main>
+            <footer class="admin-footer">
+                <button id="admin-synthesize-btn">SYNTHESIZE TRADE DIRECTIVE</button>
+            </footer>
         </div>
     </div>
 
