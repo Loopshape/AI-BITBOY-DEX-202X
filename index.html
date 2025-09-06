@@ -3,239 +3,185 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BITBOY AI::DEX — Unified Tool 202X</title>
-    <!-- Vanta.js, GSAP, jQuery, Marked, FontAwesome -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <title>Web3 DEX Builder</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="index.css">
-    <script type="importmap">
-    {
-      "imports": {
-        "qrcode": "https://aistudiocdn.com/qrcode@^1.5.4",
-        "@web3modal/standalone": "https://aistudiocdn.com/@web3modal/standalone@^2.4.3",
-        "bip39": "https://aistudiocdn.com/bip39@^3.1.0"
-      }
-    }
-    </script>
+<script type="importmap">
+{
+  "imports": {
+    "bip39": "https://aistudiocdn.com/bip39@^3.1.0",
+    "@web3modal/standalone": "https://aistudiocdn.com/@web3modal/standalone@^2.4.3",
+    "qrcode": "https://aistudiocdn.com/qrcode@^1.5.4"
+  }
+}
+</script>
 </head>
 <body>
-    <div id="vanta-canvas" class="fullscreen-adapter"></div>
-    <div class="parallax-bg">
-        <div class="parallax-layer"></div><div class="parallax-layer"></div><div class="parallax-layer"></div><div class="parallax-layer"></div>
-        <div class="parallax-layer"></div><div class="parallax-layer"></div><div class="parallax-layer"></div><div class="parallax-layer"></div>
-    </div>
+    <!-- Parallax background layers -->
+    <div class="parallax-layer" style="z-index: -3; background: radial-gradient(circle at 20% 50%, rgba(110, 142, 251, 0.1) 0%, transparent 50%);"></div>
+    <div class="parallax-layer" style="z-index: -2; background: radial-gradient(circle at 80% 20%, rgba(247, 141, 96, 0.1) 0%, transparent 50%);"></div>
+    <div class="parallax-layer" style="z-index: -1; background: radial-gradient(circle at 40% 80%, rgba(255, 255, 51, 0.05) 0%, transparent 50%);"></div>
     
-    <main class="container stack">
-        <header class="main-header">
-            <h1 class="glitch" data-text="BITBOY AI::DEX">BITBOY AI::DEX</h1>
-            <p>Unified Command & Control Interface // 202X Rebasing</p>
+    <!-- Toast container -->
+    <div class="toast-container" id="toastContainer"></div>
+    
+    <div class="container">
+        <header>
+            <div class="logo">
+                <i class="fas fa-cubes logo-icon"></i>
+                <h1>DEX Builder</h1>
+            </div>
+            
+            <div class="wallet-section">
+                <div class="wallet-info" id="wallet-info">
+                    <div class="status">
+                        <div class="status-dot connected pulsing" id="wallet-status-indicator"></div>
+                        <span class="wallet-address" id="header-wallet-address">0x1234...5678</span>
+                    </div>
+                    <div class="wallet-balance" id="header-wallet-balance">0.00 ETH</div>
+                </div>
+                
+                <button class="btn btn-primary" id="header-connect-btn">
+                    <i class="fas fa-plug"></i> Connect Wallet
+                </button>
+                
+                <button class="btn btn-secondary" id="header-disconnect-btn" style="display: none;">
+                    <i class="fas fa-times"></i> Disconnect
+                </button>
+            </div>
         </header>
+        
+        <main class="app-builder">
+            <aside class="left-column">
+                <div id="control-hub">
+                    <div class="hub-ring hub-ring-1"></div>
+                    <div class="hub-ring hub-ring-2"></div>
+                    <div class="hub-core">
+                        <div class="hub-button" id="deploy-btn" title="Deploy to Testnet">
+                            <i class="fas fa-rocket"></i>
+                        </div>
+                        <div class="hub-button" id="export-btn" title="Export Code">
+                            <i class="fas fa-download"></i>
+                        </div>
+                        <div class="hub-button" id="preview-btn" title="Live Preview">
+                            <i class="fas fa-play"></i>
+                        </div>
+                         <div class="hub-button" id="reset-btn" title="Reset">
+                            <i class="fas fa-trash"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel components-panel">
+                    <h2 class="panel-title"><i class="fas fa-puzzle-piece"></i> Components</h2>
+                    <div class="component-item" data-type="token-list" draggable="true">
+                        <div class="component-icon"><i class="fas fa-coins"></i></div>
+                        <div><h3>Token List</h3><p>Display market pairs</p></div>
+                    </div>
+                    <div class="component-item" data-type="price-chart" draggable="true">
+                        <div class="component-icon"><i class="fas fa-chart-line"></i></div>
+                        <div><h3>Price Chart</h3><p>Candlestick chart</p></div>
+                    </div>
+                    <div class="component-item" data-type="wallet-balance" draggable="true">
+                        <div class="component-icon"><i class="fas fa-wallet"></i></div>
+                        <div><h3>Wallet Balance</h3><p>User token display</p></div>
+                    </div>
+                    <div class="component-item" data-type="tx-history" draggable="true">
+                        <div class="component-icon"><i class="fas fa-history"></i></div>
+                        <div><h3>Transaction History</h3><p>Recent swaps list</p></div>
+                    </div>
+                </div>
+            </aside>
+            
+            <div class="center-column">
+                <div class="panel preview-panel">
+                    <h2 class="panel-title"><i class="fas fa-eye"></i> DEX Live Preview</h2>
+                    <div class="preview-area" id="preview-area">
+                        <!-- Mandatory DEX component -->
+                        <div class="app-component dex-module" data-type="dex" id="dex-main-module">
+                            <div class="dex-header">
+                                <h3 data-editable-part="dex-title">Swap Tokens</h3>
+                                <button class="dex-settings-btn" data-editable-part="dex-settings">
+                                    <i class="fas fa-cog"></i>
+                                </button>
+                            </div>
+                            <div class="dex-body">
+                                <div class="token-input-group" data-editable-part="dex-swap-box">
+                                    <div class="token-input-header">
+                                        <label>You Pay</label>
+                                        <span>Balance: 2.5</span>
+                                    </div>
+                                    <div class="token-input">
+                                        <input type="number" value="1.0" />
+                                        <div class="token-selector">
+                                            <img src="https://cryptologos.cc/logos/ethereum-eth-logo.png" alt="ETH">
+                                            <span>ETH</span>
+                                            <i class="fas fa-chevron-down"></i>
+                                        </div>
+                                    </div>
+                                </div>
 
-        <section id="main-card" class="card prominent-card">
-            <div class="card-header">
-                <nav class="tabs">
-                    <button class="tab-button active" data-tab="dashboard-tab"><i class="fas fa-tachometer-alt"></i> Dashboard</button>
-                    <button class="tab-button" data-tab="dex-tools-tab"><i class="fas fa-exchange-alt"></i> DEX Tools</button>
-                    <button class="tab-button" data-tab="ai-chat-tab"><i class="fas fa-robot"></i> AI Chat</button>
-                    <button class="tab-button" data-tab="kanban-tab"><i class="fas fa-tasks"></i> Task Board</button>
-                    <button class="tab-button" data-tab="settings-tab"><i class="fas fa-cog"></i> Settings</button>
-                </nav>
-            </div>
-            <div class="card-body">
-                <!-- Dashboard Tab -->
-                <div id="dashboard-tab" class="tab-content active">
-                    <div class="grid two-cols">
-                        <div class="stack">
-                             <div class="card">
-                                <h3><i class="fas fa-terminal"></i> System Log</h3>
-                                <div id="terminal" class="terminal-output"><div id="termOutput"></div></div>
-                            </div>
-                            <div class="card">
-                                <h3><i class="fas fa-wallet"></i> Wallet Tools</h3>
-                                <div class="stack">
-                                    <button id="connectWalletBtn"><i class="fas fa-plug"></i> Connect Wallet</button>
-                                    <div id="walletInfo" class="wallet-info" style="display: none;">
-                                        <p><strong>Status:</strong> <span id="walletStatus">Disconnected</span></p>
-                                        <p><strong>Address:</strong> <span id="walletAddress">N/A</span></p>
-                                        <p><strong>Balance:</strong> <span id="walletBalance">N/A</span></p>
-                                        <button id="disconnectWalletBtn" class="small-btn button-secondary">Disconnect</button>
+                                <div class="swap-icon">
+                                    <i class="fas fa-arrow-down"></i>
+                                </div>
+
+                                <div class="token-input-group" data-editable-part="dex-swap-box">
+                                    <div class="token-input-header">
+                                        <label>You Receive</label>
+                                        <span>Balance: 1,500</span>
                                     </div>
-                                    <hr>
-                                    <h4><i class="fas fa-seedling"></i> Generate Mnemonic</h4>
-                                    <div class="form-group">
-                                        <select id="mnemonic-strength">
-                                            <option value="128">12 words</option>
-                                            <option value="256">24 words</option>
-                                        </select>
-                                        <button id="generateMnemonicBtn">Generate</button>
+                                    <div class="token-input">
+                                        <input type="number" value="1532.5" />
+                                        <div class="token-selector">
+                                            <img src="https://cryptologos.cc/logos/usd-coin-usdc-logo.png" alt="USDC">
+                                            <span>USDC</span>
+                                            <i class="fas fa-chevron-down"></i>
+                                        </div>
                                     </div>
-                                    <div id="mnemonic-display" class="panel" style="display: none;"></div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="stack">
-                            <div class="card">
-                                <h3><i class="fas fa-chart-line"></i> Market Overview</h3>
-                                <div id="tradingview-widget-container" style="height:400px;"></div>
-                            </div>
-                            <div class="card">
-                                <h3><i class="fas fa-tasks"></i> Recurring Tasks</h3>
-                                <div id="recurring-tasks-list" class="task-list"></div>
-                                <div class="form-group">
-                                    <input type="text" id="new-recurring-task" placeholder="New recurring task...">
-                                    <button id="add-recurring-task-btn">+</button>
-                                </div>
-                            </div>
+                            <button class="btn btn-primary swap-button" data-editable-part="dex-swap-button">Connect Wallet</button>
                         </div>
                     </div>
-                </div>
-                <!-- DEX Tools Tab -->
-                <div id="dex-tools-tab" class="tab-content">
-                    <div class="grid two-cols">
-                        <div class="stack">
-                            <div class="card">
-                                <h3><i class="fas fa-swatchbook"></i> Swap Tokens</h3>
-                                <div class="form-group">
-                                    <label for="from-token">From:</label>
-                                    <input type="text" id="from-token" placeholder="e.g., ETH" value="ETH">
-                                </div>
-                                <div class="form-group">
-                                    <label for="to-token">To:</label>
-                                    <input type="text" id="to-token" placeholder="e.g., BTC" value="WBTC">
-                                </div>
-                                <div class="form-group">
-                                    <label for="leverage">Leverage:</label>
-                                    <select id="leverage">
-                                        <option value="1">1x</option>
-                                        <option value="5">5x</option>
-                                        <option value="10">10x</option>
-                                        <option value="20">20x</option>
-                                    </select>
-                                </div>
-                                <button id="swap-btn">Execute Swap</button>
-                            </div>
-                            <div class="card" id="nft-carousel-container">
-                                <h3><i class="far fa-images"></i> NFT Carousel</h3>
-                                <div class="carousel-scene">
-                                    <div class="carousel" id="nft-carousel"></div>
-                                </div>
-                                <div class="carousel-controls">
-                                    <button id="prev-btn">&lt;</button>
-                                    <button id="next-btn">&gt;</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card">
-                             <h3><i class="fas fa-qrcode"></i> QR Code Generator</h3>
-                             <div class="stack">
-                                <textarea id="qr-input" placeholder="Enter text or URL for QR code..."></textarea>
-                                <button id="generate-qr-btn">Generate QR Code</button>
-                                <div id="qr-output" class="qr-container"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- AI Chat Tab -->
-                <div id="ai-chat-tab" class="tab-content">
-                    <div class="chat-container">
-                        <div class="chat-history" id="ai-chat-history"></div>
-                        <form id="ai-chat-form" class="chat-form">
-                            <textarea id="ai-chat-input" placeholder="Ask the AI anything..." rows="1"></textarea>
-                            <button type="submit"><i class="fas fa-paper-plane"></i></button>
-                        </form>
-                    </div>
-                </div>
-                <!-- Kanban Tab -->
-                <div id="kanban-tab" class="tab-content">
-                    <div id="kanban-board" class="kanban-board">
-                         <div class="kanban-column" data-status="todo">
-                            <h3 class="kanban-column-title">To Do</h3>
-                            <div class="kanban-cards" data-status="todo"></div>
-                            <div class="add-card-form">
-                                <input type="text" class="add-card-input" placeholder="New task...">
-                                <button class="add-card-btn">+</button>
-                            </div>
-                        </div>
-                         <div class="kanban-column" data-status="inprogress">
-                            <h3 class="kanban-column-title">In Progress</h3>
-                            <div class="kanban-cards" data-status="inprogress"></div>
-                        </div>
-                         <div class="kanban-column" data-status="done">
-                            <h3 class="kanban-column-title">Done</h3>
-                            <div class="kanban-cards" data-status="done"></div>
-                        </div>
-                    </div>
-                </div>
-                <!-- Settings Tab -->
-                <div id="settings-tab" class="tab-content">
-                    <h3><i class="fas fa-cogs"></i> Configuration</h3>
-                    <div class="grid two-cols">
-                        <div class="stack">
-                             <div class="card">
-                                <h4>API Keys</h4>
-                                <div class="form-group">
-                                    <label for="coingecko-api-key">CoinGecko API Key</label>
-                                    <input type="password" id="coingecko-api-key" placeholder="Enter your key...">
-                                </div>
-                            </div>
-                             <div class="card">
-                                <h4>Data Management</h4>
-                                <button id="export-settings-btn">Export Settings</button>
-                                <button id="import-settings-btn" class="button-secondary">Import Settings</button>
-                                <input type="file" id="import-file-input" style="display:none;" accept=".json">
-                                <hr>
-                                <button id="clear-data-btn" class="button-danger">Clear All Local Data</button>
-                            </div>
-                        </div>
-                        <div class="card">
-                            <h4>Ollama AI Configuration</h4>
-                             <div class="form-group">
-                                <label for="ollama-api-url">Ollama API URL</label>
-                                <input type="text" id="ollama-api-url" placeholder="http://localhost:11434/api/chat">
-                            </div>
-                             <div class="form-group">
-                                <label for="ollama-model-name">Model Name</label>
-                                <input type="text" id="ollama-model-name" placeholder="llama3">
-                            </div>
-                             <div class="form-group">
-                                <label for="ollama-temperature">Temperature</label>
-                                <input type="range" id="ollama-temperature" min="0" max="1" step="0.1" value="0.7">
-                                <span id="ollama-temperature-value">0.7</span>
-                            </div>
-                             <div class="form-group">
-                                <label for="ollama-max-tokens">Max Tokens</label>
-                                <input type="number" id="ollama-max-tokens" placeholder="2048" min="1">
-                            </div>
-                        </div>
-                    </div>
-                    <button id="save-settings-btn">Save Settings</button>
                 </div>
             </div>
-        </section>
+            
+            <aside class="right-column">
+                <div class="panel">
+                    <h2 class="panel-title"><i class="fas fa-sliders-h"></i> Properties</h2>
+                    <div id="properties-editor">
+                        <p class="properties-placeholder">Select a DEX element to edit its properties.</p>
+                    </div>
+                </div>
+                <div class="panel">
+                    <h2 class="panel-title"><i class="fas fa-terminal"></i> Terminal</h2>
+                    <div class="terminal" id="terminal"></div>
+                </div>
+            </aside>
+        </main>
+    </div>
 
-        <!-- Prominent Buttons for Mobile -->
-        <div class="prominent-buttons">
-            <button class="prominent-btn active" data-tab="dashboard-tab"><i class="fas fa-tachometer-alt"></i></button>
-            <button class="prominent-btn" data-tab="dex-tools-tab"><i class="fas fa-exchange-alt"></i></button>
-            <button class="prominent-btn" data-tab="ai-chat-tab"><i class="fas fa-robot"></i></button>
-            <button class="prominent-btn" data-tab="kanban-tab"><i class="fas fa-tasks"></i></button>
-            <button class="prominent-btn" data-tab="settings-tab"><i class="fas fa-cog"></i></button>
-        </div>
-    </main>
-
-    <!-- Modal Structure -->
-    <div id="generic-modal" class="modal">
+    <!-- Connect Wallet Modal -->
+    <div class="modal" id="connect-modal">
         <div class="modal-content">
-            <button class="modal-close-btn">&times;</button>
-            <h3 id="modal-title">Modal Title</h3>
-            <div id="modal-body"></div>
+            <div class="modal-header">
+                <h2 class="modal-title">Connect Wallet</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="wallet-option" id="connect-metamask-btn">
+                <i class="fab fa-ethereum wallet-icon"></i>
+                <div><h3>MetaMask</h3><p>Connect using browser extension</p></div>
+            </div>
+            <div class="wallet-option" id="connect-walletconnect-btn">
+                <i class="fas fa-wallet wallet-icon"></i>
+                <div><h3>WalletConnect</h3><p>Connect using mobile wallet</p></div>
+            </div>
+            <div class="wallet-option" id="connect-cli-btn">
+                <i class="fas fa-terminal wallet-icon"></i>
+                <div><h3>CLI Wallet</h3><p>Connect to local node</p></div>
+            </div>
         </div>
     </div>
-    
+
     <script type="module" src="index.tsx"></script>
 </body>
 </html>
