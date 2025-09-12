@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import { marked } from "marked";
 
@@ -136,6 +137,7 @@ const elements = {
     personaInstructionInput: document.getElementById('persona-instruction-input') as HTMLTextAreaElement,
     cancelPersonaEditBtn: document.getElementById('cancel-persona-edit-btn') as HTMLButtonElement,
     savePersonaBtn: document.getElementById('save-persona-btn') as HTMLButtonElement,
+    personaModalTitle: document.getElementById('persona-modal-title') as HTMLElement,
 };
 
 // --- State ---
@@ -144,7 +146,15 @@ let settings: Settings;
 let ai: GoogleGenAI | null = null;
 let isGenerating = false;
 let videoSourceImage: { mimeType: string; data: string; } | null = null;
-let portfolioValue = 128435.72;
+let portfolioValue = 0; // Will be updated by API
+let lastPortfolioValue = 0; // To calculate P&L
+const mockPortfolio = {
+    'bitcoin': 0.5,
+    'ethereum': 10,
+    'solana': 100,
+    'chainlink': 500,
+    'exodus': 5000,
+};
 let chart: any;
 let blockCounter = 876543;
 let customPersonas: Persona[] = [];
@@ -159,10 +169,24 @@ function initialize() {
     }
 
     settings = loadSettingsFromLocalStorage();
+    loadCustomPersonas(); // Load personas first to validate active ID
+
+    // Load and validate the last active persona from localStorage
+    const savedPersonaId = localStorage.getItem('activePersonaId_dex');
+    if (savedPersonaId) {
+        const allPersonas = [...personas, ...customPersonas];
+        // Parse ID (can be number for default, string for custom)
+        const parsedId = isNaN(parseInt(savedPersonaId)) ? savedPersonaId : parseInt(savedPersonaId);
+        // Check if the persona still exists before setting it as active
+        if (allPersonas.some(p => p.id === parsedId)) {
+            activePersonaId = parsedId;
+        }
+    }
+
     loadChatSession();
-    loadCustomPersonas();
     
     // Event Listeners
+    window.addEventListener('keydown', handleGlobalKeyDown);
     elements.chatForm.addEventListener('submit', handleFormSubmit);
     elements.clearChatBtn.addEventListener('click', clearCurrentChat);
     elements.summarizeBtn.addEventListener('click', handleSummarizeClick);
@@ -218,16 +242,7 @@ function initialize() {
         if (button) {
             const newPersonaIdStr = (button as HTMLElement).dataset.id as string;
             const newPersonaId = isNaN(parseInt(newPersonaIdStr)) ? newPersonaIdStr : parseInt(newPersonaIdStr);
-
-            if (newPersonaId !== activePersonaId) {
-                activePersonaId = newPersonaId;
-                const allPersonas = [...personas, ...customPersonas];
-                const activePersona = allPersonas.find(p => p.id === activePersonaId)!;
-                currentChat.systemInstruction = activePersona.systemInstruction;
-                renderPersona();
-                addSystemMessage(`Persona protocol switched to ${activePersona.name}.`);
-                saveChatSession();
-            }
+            switchActivePersona(newPersonaId);
         }
     });
 
@@ -238,7 +253,8 @@ function initialize() {
     updateToggleStates();
     
     // DEX Intervals
-    setInterval(updatePortfolio, 3000);
+    updatePortfolio(); // Initial call to fetch data
+    setInterval(updatePortfolio, 15000); // Update every 15 seconds to be API-friendly
     setInterval(updateBlockchainSync, 4000);
     setInterval(triggerStakingEvent, 10000);
 }
@@ -460,7 +476,7 @@ function createChart() {
     const gradient = ctx.createLinearGradient(0, 0, 0, elements.chartCanvas.offsetHeight);
     gradient.addColorStop(0, 'rgba(0, 255, 204, 0.5)');
     gradient.addColorStop(1, 'rgba(0, 255, 204, 0)');
-    chart = new Chart(ctx, { type: 'line', data: { labels: Array(30).fill(''), datasets: [{ data: Array.from({ length: 30 }, () => portfolioValue * (1 + (Math.random() - 0.5) * 0.05)), borderColor: 'var(--color-accent)', backgroundColor: gradient, borderWidth: 2, pointRadius: 0, fill: true, tension: 0.4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } } });
+    chart = new Chart(ctx, { type: 'line', data: { labels: Array(30).fill(''), datasets: [{ data: Array(30).fill(null), borderColor: 'var(--color-accent)', backgroundColor: gradient, borderWidth: 2, pointRadius: 0, fill: true, tension: 0.4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } } });
 }
 
 function renderPersona() {
@@ -493,20 +509,58 @@ function renderInterestPools() {
     `).join('');
 }
 
-function updatePortfolio() {
-    const changePercent = (Math.random() - 0.49) * 0.1;
-    portfolioValue *= (1 + changePercent / 100);
-    elements.portfolioValue.textContent = `$${portfolioValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-    elements.pnlValue.className = `pnl ${changePercent >= 0 ? 'positive' : 'negative'}`;
-    elements.pnlValue.textContent = `${changePercent >= 0 ? '+' : ''}${(portfolioValue * (changePercent / 100)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%)`;
-    chart.data.datasets[0].data.push(portfolioValue);
+async function fetchCryptoPrices(coinIds: string[]): Promise<Record<string, { usd: number }> | null> {
+    const ids = coinIds.join(',');
+    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`;
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`CoinGecko API request failed with status ${response.status}`);
+        }
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error("Failed to fetch crypto prices:", error);
+        return null;
+    }
+}
+
+async function updatePortfolio() {
+    const coinIds = Object.keys(mockPortfolio);
+    const prices = await fetchCryptoPrices(coinIds);
+
+    if (!prices) {
+        console.warn("Could not update portfolio value due to API error.");
+        return;
+    }
+    
+    let newPortfolioValue = 0;
+    for (const id of coinIds) {
+        if (prices[id]) {
+            newPortfolioValue += mockPortfolio[id as keyof typeof mockPortfolio] * prices[id].usd;
+        }
+    }
+
+    if (newPortfolioValue === 0) return;
+
+    // On the very first successful fetch, populate the chart with some historical-looking data
+    if (lastPortfolioValue === 0 && chart.data.datasets[0].data[0] === null) {
+        const initialData = Array.from({ length: 30 }, () => newPortfolioValue * (1 + (Math.random() - 0.5) * 0.02));
+        chart.data.datasets[0].data = initialData;
+    }
+    
+    const changeValue = newPortfolioValue - (lastPortfolioValue || newPortfolioValue);
+    const changePercent = (lastPortfolioValue === 0) ? 0 : (changeValue / lastPortfolioValue) * 100;
+
+    elements.portfolioValue.textContent = `$${newPortfolioValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    elements.pnlValue.className = `pnl ${changeValue >= 0 ? 'positive' : 'negative'}`;
+    elements.pnlValue.textContent = `${changeValue >= 0 ? '+' : ''}${changeValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${changeValue >= 0 ? '+' : ''}${changePercent.toFixed(2)}%)`;
+    
+    chart.data.datasets[0].data.push(newPortfolioValue);
     chart.data.datasets[0].data.shift();
     chart.update('quiet');
-    if(Math.random() < 0.1) {
-        const logMessage : Message = {role: 'model', parts: [{ text: `Analyzing market data... a ${changePercent > 0 ? 'positive' : 'negative'} trend was detected.`}]};
-        currentChat.messages.push(logMessage);
-        renderMessage(logMessage);
-    }
+
+    lastPortfolioValue = newPortfolioValue;
 }
 
 function updateBlockchainSync() {
@@ -575,6 +629,34 @@ function saveCustomPersonas() {
     localStorage.setItem('customPersonas_dex', JSON.stringify(customPersonas));
 }
 
+function switchActivePersona(newPersonaId: number | string, reasonMessage?: string) {
+    if (newPersonaId === activePersonaId) return;
+
+    const allPersonas = [...personas, ...customPersonas];
+    const newPersona = allPersonas.find(p => p.id === newPersonaId);
+
+    if (newPersona) {
+        activePersonaId = newPersonaId;
+        localStorage.setItem('activePersonaId_dex', newPersonaId.toString()); // Persist selection
+        currentChat.systemInstruction = newPersona.systemInstruction;
+        renderPersona();
+        
+        if (reasonMessage) {
+            addSystemMessage(reasonMessage);
+        } else {
+            addSystemMessage(`Persona protocol switched to ${newPersona.name}.`);
+        }
+        
+        saveChatSession();
+    } else {
+        console.error(`Attempted to switch to non-existent persona ID: ${newPersonaId}`);
+        const defaultPersona = personas[0];
+        if (activePersonaId !== defaultPersona.id) {
+             switchActivePersona(defaultPersona.id, `Error: Persona not found. Reverting to ${defaultPersona.name}.`);
+        }
+    }
+}
+
 function renderPersonaSelector() {
     const allPersonas = [...personas, ...customPersonas];
     elements.personaSelector.innerHTML = allPersonas.map(p => 
@@ -584,6 +666,7 @@ function renderPersonaSelector() {
 }
 
 function openPersonaModal() {
+    elements.personaModalTitle.innerHTML = `<i class="fas fa-users-cog"></i> Manage Personas`;
     renderCustomPersonasListInModal();
     hidePersonaForm();
     elements.personaModal.style.display = 'flex';
@@ -627,11 +710,20 @@ function renderCustomPersonasListInModal() {
 }
 
 function showPersonaForm(persona?: Persona) {
-    elements.personaIdInput.value = persona?.id.toString() || '';
-    elements.personaNameInput.value = persona?.name || '';
-    elements.personaAvatarInput.value = persona?.avatar || '';
-    elements.personaDescInput.value = persona?.desc || '';
-    elements.personaInstructionInput.value = persona?.systemInstruction || '';
+    if (persona) { // Editing
+        elements.personaModalTitle.innerHTML = `<i class="fas fa-edit"></i> Edit Persona`;
+        elements.savePersonaBtn.textContent = 'Update Persona';
+        elements.personaIdInput.value = persona.id.toString();
+        elements.personaNameInput.value = persona.name;
+        elements.personaAvatarInput.value = persona.avatar;
+        elements.personaDescInput.value = persona.desc;
+        elements.personaInstructionInput.value = persona.systemInstruction;
+    } else { // Creating
+        elements.personaModalTitle.innerHTML = `<i class="fas fa-plus-circle"></i> Create New Persona`;
+        elements.savePersonaBtn.textContent = 'Create Persona';
+        elements.personaForm.reset();
+        elements.personaIdInput.value = '';
+    }
 
     elements.personaListView.style.display = 'none';
     elements.personaForm.style.display = 'block';
@@ -645,10 +737,13 @@ function hidePersonaForm() {
     elements.savePersonaBtn.style.display = 'none';
     elements.cancelPersonaEditBtn.style.display = 'none';
     elements.personaListView.style.display = 'block';
+    elements.personaModalTitle.innerHTML = `<i class="fas fa-users-cog"></i> Manage Personas`;
 }
 
 function handleSavePersona() {
     const id = elements.personaIdInput.value;
+    const isEditing = !!id;
+
     const personaData: Persona = {
         id: id || `custom_${Date.now()}`,
         name: elements.personaNameInput.value.trim(),
@@ -662,10 +757,15 @@ function handleSavePersona() {
         return;
     }
     
-    if (id) { // Editing existing
+    if (isEditing) { // Editing existing
         const index = customPersonas.findIndex(p => p.id === id);
         if (index > -1) {
             customPersonas[index] = personaData;
+            if (activePersonaId === id) {
+                currentChat.systemInstruction = personaData.systemInstruction;
+                addSystemMessage(`Active persona '${personaData.name}' has been updated.`);
+                saveChatSession();
+            }
         }
     } else { // Creating new
         customPersonas.push(personaData);
@@ -674,8 +774,13 @@ function handleSavePersona() {
     saveCustomPersonas();
     renderPersonaSelector();
     renderCustomPersonasListInModal();
+    
+    if (!isEditing) {
+        switchActivePersona(personaData.id);
+    }
+
     hidePersonaForm();
-    showToast("Persona saved successfully!");
+    showToast(`Persona ${isEditing ? 'updated' : 'created'} successfully!`);
 }
 
 function handleDeletePersona(id: string) {
@@ -683,14 +788,9 @@ function handleDeletePersona(id: string) {
         customPersonas = customPersonas.filter(p => p.id !== id);
         saveCustomPersonas();
         
-        // If the deleted persona was active, switch to the default
         if (activePersonaId === id) {
-            activePersonaId = 1; // Default to GRID
-            const allPersonas = [...personas, ...customPersonas];
-            const activePersona = allPersonas.find(p => p.id === activePersonaId)!;
-            currentChat.systemInstruction = activePersona.systemInstruction;
-            addSystemMessage(`Active persona was deleted. Reverting to ${activePersona.name}.`);
-            saveChatSession();
+            const defaultPersona = personas[0];
+            switchActivePersona(defaultPersona.id, `Active persona was deleted. Reverting to ${defaultPersona.name}.`);
         }
 
         renderPersonaSelector();
@@ -714,7 +814,21 @@ function loadSettingsFromLocalStorage(): Settings {
 // --- App Start ---
 document.addEventListener('DOMContentLoaded', initialize);
 
-// Fix: Removed the now-unnecessary comment block about "unchanged functions".
+function handleGlobalKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+        if (elements.settingsModal.style.display === 'flex') {
+            closeSettingsModal();
+        } else if (elements.videoModal.style.display === 'flex') {
+            closeVideoModal();
+        } else if (elements.personaModal.style.display === 'flex') {
+            if (elements.personaForm.style.display === 'block') {
+                hidePersonaForm();
+            } else {
+                closePersonaModal();
+            }
+        }
+    }
+}
 
 async function handleSummarizeClick() {
     if (!ai || isGenerating) return;
