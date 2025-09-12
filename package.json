@@ -1,5 +1,5 @@
 {
-  "name": "bitboy-ai::dex-—-unified-tool-202x",
+  "name": "web3-app-builder",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,14 +9,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@web3modal/standalone": "latest",
-    "bip39": "latest",
-    "express": "^5.1.0",
-    "qrcode": "latest"
+    "bip39": "^3.1.0",
+    "@web3modal/standalone": "^2.4.3",
+    "qrcode": "^1.5.4",
+    "@google/genai": "^0.14.2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
     "typescript": "~5.8.2",
-    "vite": "^6.3.5"
+    "vite": "^6.2.0"
   }
 }
