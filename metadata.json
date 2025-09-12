@@ -1,7 +1,5 @@
 {
-  "name": "Web3 App Builder",
-  "description": "A drag-and-drop user interface for building Web3 application frontends, with simulated wallet connection and component management.",
-  "requestFramePermissions": [
-    "microphone"
-  ]
+  "name": "AI Memory Chat",
+  "description": "A persistent, topic-based chat interface that uses the Gemini API for streaming responses, inspired by a command-line script.",
+  "requestFramePermissions": []
 }

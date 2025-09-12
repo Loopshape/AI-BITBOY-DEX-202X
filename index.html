@@ -3,320 +3,124 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web3 DEX Builder</title>
+    <title>AI Memory Chat</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="index.css">
 <script type="importmap">
 {
   "imports": {
-    "bip39": "https://aistudiocdn.com/bip39@^3.1.0",
-    "@web3modal/standalone": "https://aistudiocdn.com/@web3modal/standalone@^2.4.3",
-    "qrcode": "https://aistudiocdn.com/qrcode@^1.5.4",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^0.14.2"
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.19.0",
+    "marked": "https://aistudiocdn.com/marked@^16.2.1"
   }
 }
 </script>
 </head>
 <body>
-    <!-- Parallax background layers -->
-    <div class="parallax-layer" style="z-index: -3; background: radial-gradient(circle at 20% 50%, rgba(110, 142, 251, 0.1) 0%, transparent 50%);"></div>
-    <div class="parallax-layer" style="z-index: -2; background: radial-gradient(circle at 80% 20%, rgba(247, 141, 96, 0.1) 0%, transparent 50%);"></div>
-    <div class="parallax-layer" style="z-index: -1; background: radial-gradient(circle at 40% 80%, rgba(255, 255, 51, 0.05) 0%, transparent 50%);"></div>
-    
-    <!-- Toast container -->
-    <div class="toast-container" id="toastContainer"></div>
-    
-    <div class="container">
-        <header>
-            <div class="logo">
-                <i class="fas fa-cubes logo-icon"></i>
-                <h1>DEX Builder</h1>
+    <div class="app-container">
+        <aside class="sidebar">
+            <header class="sidebar-header">
+                <h1><i class="fas fa-brain"></i> AI Memory Chat</h1>
+                <div class="sidebar-header-actions">
+                    <button id="new-chat-btn" class="sidebar-btn" aria-label="Start new chat"><i class="fas fa-plus"></i> New Chat</button>
+                    <button id="install-script-btn" class="sidebar-btn secondary-btn" aria-label="Install CLI script"><i class="fas fa-terminal"></i> Install CLI</button>
+                </div>
+            </header>
+            <nav class="chat-nav">
+                <ul id="chat-list">
+                    <!-- Chat history items will be inserted here -->
+                </ul>
+            </nav>
+            <footer class="sidebar-footer">
+                 <button id="settings-btn" class="sidebar-btn secondary-btn" aria-label="Open settings"><i class="fas fa-cog"></i> Settings</button>
+                 <button id="clear-chats-btn" class="sidebar-btn danger-btn" aria-label="Clear all chats"><i class="fas fa-trash"></i> Clear All Chats</button>
+            </footer>
+        </aside>
+
+        <main class="chat-area">
+            <div id="chat-summary-container" class="chat-summary-container">
+                <p><strong>Summary:</strong> <span id="chat-summary-text"></span></p>
             </div>
-            
-            <div class="header-actions">
-                 <button class="btn btn-secondary" id="reset-btn">
-                    <i class="fas fa-trash"></i> Reset Canvas
-                </button>
-                <button class="btn btn-secondary" id="open-admin-controls-btn">
-                    <i class="fas fa-brain"></i> AI Core
-                </button>
-                <div class="wallet-section">
-                    <div class="wallet-info" id="wallet-info">
-                        <div class="status">
-                            <div class="status-dot connected pulsing" id="wallet-status-indicator"></div>
-                            <span class="wallet-address" id="header-wallet-address">0x1234...5678</span>
-                        </div>
-                        <div class="wallet-balance" id="header-wallet-balance">0.00 ETH</div>
+            <div id="message-list" class="message-list">
+                <div id="welcome-message" class="welcome-message">
+                    <i class="fas fa-satellite-dish"></i>
+                    <h2>Welcome to AI Memory Chat</h2>
+                    <p>Start a new conversation or select one from the list.</p>
+                </div>
+            </div>
+            <div class="chat-input-area">
+                <div class="controls-panel">
+                    <div class="toggle-switch">
+                        <span>⚡️ Fast Mode</span>
+                        <input type="checkbox" id="fast-mode-checkbox" class="toggle-checkbox">
+                        <label for="fast-mode-checkbox" class="toggle-label"></label>
                     </div>
-                    
-                    <button class="btn btn-primary" id="header-connect-btn">
-                        <i class="fas fa-plug"></i> Connect Wallet
+                    <div class="toggle-switch">
+                        <span>Memory</span>
+                        <input type="checkbox" id="memory-toggle-checkbox" class="toggle-checkbox" checked>
+                        <label for="memory-toggle-checkbox" class="toggle-label"></label>
+                    </div>
+                    <div class="toggle-switch">
+                        <span>Prioritized Memory</span>
+                        <input type="checkbox" id="prioritized-memory-checkbox" class="toggle-checkbox" checked>
+                        <label for="prioritized-memory-checkbox" class="toggle-label"></label>
+                    </div>
+                    <div class="toggle-switch">
+                        <span>Learning Mode</span>
+                        <input type="checkbox" id="learning-mode-checkbox" class="toggle-checkbox" checked>
+                        <label for="learning-mode-checkbox" class="toggle-label"></label>
+                    </div>
+                    <button id="summarize-btn" class="controls-btn" aria-label="Summarize chat"><i class="fas fa-file-alt"></i> Summarize</button>
+                    <button id="export-chat-btn" class="controls-btn" aria-label="Export chat"><i class="fas fa-download"></i> Export Chat</button>
+                </div>
+                <form id="chat-form" class="chat-form">
+                    <textarea id="prompt-input" placeholder="Ask anything..." rows="1"></textarea>
+                    <button id="send-btn" type="submit" aria-label="Send message">
+                        <i class="fas fa-paper-plane"></i>
                     </button>
-                    
-                    <button class="btn btn-secondary" id="header-disconnect-btn" style="display: none;">
-                        <i class="fas fa-times"></i> Disconnect
-                    </button>
-                </div>
+                </form>
             </div>
-        </header>
-        
-        <main class="app-builder">
-            <aside class="left-column">
-                <div class="panel" id="ai-genesis-panel">
-                    <h2 class="panel-title"><i class="fas fa-magic-wand-sparkles"></i> AI Genesis</h2>
-                    <div class="ai-genesis-controls">
-                        <textarea id="ai-genesis-prompt" placeholder="Describe a component to generate... e.g., 'a simple token swap interface' or 'a vertical token list with price and 24h change'"></textarea>
-                        <button id="ai-genesis-generate-btn" class="btn btn-primary">
-                            <i class="fas fa-bolt"></i> Generate
-                        </button>
-                    </div>
-                    <div id="ai-genesis-output-container" style="display: none;">
-                         <h3 class="panel-subtitle">Generated Component</h3>
-                         <div class="generated-code-wrapper">
-                            <pre><code id="ai-genesis-code"></code></pre>
-                            <div class="code-actions">
-                                <button id="ai-genesis-copy-btn" title="Copy Code"><i class="fas fa-copy"></i></button>
-                            </div>
-                         </div>
-                         <button id="ai-genesis-add-btn" class="btn btn-secondary">
-                            <i class="fas fa-plus-circle"></i> Add to Preview
-                        </button>
-                    </div>
-                </div>
-                <div class="panel components-panel">
-                    <h2 class="panel-title"><i class="fas fa-puzzle-piece"></i> Components</h2>
-                    <div class="component-item" data-type="wallet-balance" draggable="true">
-                        <div class="component-icon"><i class="fas fa-wallet"></i></div>
-                        <div><h3>Wallet Balance</h3><p>User token display</p></div>
-                    </div>
-                    <div class="component-item" data-type="tx-history" draggable="true">
-                        <div class="component-icon"><i class="fas fa-history"></i></div>
-                        <div><h3>Transaction History</h3><p>Recent swaps list</p></div>
-                    </div>
-                    <div class="component-item" data-type="ai-assistant" draggable="true">
-                        <div class="component-icon"><i class="fas fa-robot"></i></div>
-                        <div><h3>AI Assistant</h3><p>Voice-enabled crypto bot</p></div>
-                    </div>
-                    <div class="component-item" data-type="wallet-cli" draggable="true">
-                        <div class="component-icon"><i class="fas fa-terminal"></i></div>
-                        <div><h3>Wallet CLI Connect</h3><p>Connect to local node</p></div>
-                    </div>
-
-                    <h3 class="panel-subtitle">Fundamental Elements</h3>
-                    <div class="component-item" data-type="info-framework" draggable="true">
-                        <div class="component-icon"><i class="fas fa-project-diagram"></i></div>
-                        <div><h3>Info Framework</h3><p>Display core metrics</p></div>
-                    </div>
-                    <div class="component-item" data-type="system-status" draggable="true">
-                        <div class="component-icon"><i class="fas fa-network-wired"></i></div>
-                        <div><h3>System Status</h3><p>Network health monitor</p></div>
-                    </div>
-                    <div class="component-item" data-type="block-explorer" draggable="true">
-                        <div class="component-icon"><i class="fas fa-cube"></i></div>
-                        <div><h3>Block Explorer</h3><p>Inspect blockchain data</p></div>
-                    </div>
-                    <div class="component-item" data-type="data-analysis" draggable="true">
-                        <div class="component-icon"><i class="fas fa-brain"></i></div>
-                        <div><h3>Data Analysis</h3><p>Market analysis tools</p></div>
-                    </div>
-                     <div class="component-item" data-type="sentinel-protocol" draggable="true">
-                        <div class="component-icon"><i class="fas fa-shield-halved"></i></div>
-                        <div><h3>Sentinel Protocol Hub</h3><p>Staking, Governance & Alpha</p></div>
-                    </div>
-                    <div class="component-item" data-type="entropy-parser" draggable="true">
-                        <div class="component-icon"><i class="fas fa-atom"></i></div>
-                        <div><h3>Entropy Parser</h3><p>Analyze data streams</p></div>
-                    </div>
-                </div>
-            </aside>
-            
-            <div class="center-column">
-                <div class="panel preview-panel">
-                    <h2 class="panel-title"><i class="fas fa-eye"></i> DEX Live Preview</h2>
-                    <div class="preview-area" id="preview-area">
-                        <!-- Mandatory DEX component -->
-                        <div class="app-component dex-module" data-type="dex" id="dex-main-module">
-                            <div class="dex-header">
-                                <h3 data-editable-part="dex-title">Swap Tokens</h3>
-                                <button class="dex-settings-btn" data-editable-part="dex-settings">
-                                    <i class="fas fa-cog"></i>
-                                </button>
-                            </div>
-                            <div class="dex-body">
-                                <div class="token-input-group" data-editable-part="dex-swap-box">
-                                    <div class="token-input-header">
-                                        <label>You Pay</label>
-                                        <span>Balance: 2.5</span>
-                                    </div>
-                                    <div class="token-input">
-                                        <input type="number" value="1.0" />
-                                        <div class="token-selector">
-                                            <img src="https://cryptologos.cc/logos/ethereum-eth-logo.png" alt="ETH">
-                                            <span>ETH</span>
-                                            <i class="fas fa-chevron-down"></i>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="swap-icon">
-                                    <i class="fas fa-arrow-down"></i>
-                                </div>
-
-                                <div class="token-input-group" data-editable-part="dex-swap-box">
-                                    <div class="token-input-header">
-                                        <label>You Receive</label>
-                                        <span>Balance: 1,500</span>
-                                    </div>
-                                    <div class="token-input">
-                                        <input type="number" value="1532.5" />
-                                        <div class="token-selector">
-                                            <img src="https://cryptologos.cc/logos/usd-coin-usdc-logo.png" alt="USDC">
-                                            <span>USDC</span>
-                                            <i class="fas fa-chevron-down"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <button class="btn btn-primary swap-button" data-editable-part="dex-swap-button">Connect Wallet</button>
-                            <div class="resize-handle"></div>
-                        </div>
-                        
-                        <!-- Wallet CLI Connect Component -->
-                        <div class="app-component wallet-cli-component" data-type="wallet-cli">
-                            <div class="wallet-cli-header">
-                                <h3><i class="fas fa-terminal"></i> Wallet CLI Connect</h3>
-                            </div>
-                            <div class="wallet-cli-body">
-                                <p class="wallet-cli-status" id="cli-component-status">Status: <span>Disconnected</span></p>
-                                <p class="wallet-cli-info">Connect to a local wallet node for advanced operations.</p>
-                            </div>
-                            <button class="btn btn-secondary wallet-cli-connect-btn" id="cli-component-connect-btn">Connect to CLI</button>
-                            <div class="resize-handle"></div>
-                        </div>
-
-                        <div class="preview-area-placeholder" id="preview-area-placeholder">
-                            <i class="fas fa-hand-pointer"></i>
-                            <p>Drag components here to build your DEX</p>
-                        </div>
-                    </div>
-                </div>
-                 <!-- Auto-layout Toolbar -->
-                <div id="auto-layout-toolbar" class="auto-layout-toolbar" style="display: none;">
-                    <button data-layout="row" title="Arrange in a row"><i class="fas fa-grip-lines-vertical"></i></button>
-                    <button data-layout="column" title="Arrange in a column"><i class="fas fa-grip-lines"></i></button>
-                    <button data-layout="grid" title="Arrange in a grid"><i class="fas fa-th"></i></button>
-                </div>
-            </div>
-            
-            <aside class="right-column">
-                <div class="panel">
-                    <h2 class="panel-title"><i class="fas fa-receipt"></i> Recent Transactions</h2>
-                    <div id="transactions-list" class="transactions-list-container">
-                        <p class="transactions-placeholder">No transactions yet.</p>
-                    </div>
-                </div>
-                <div class="panel">
-                    <h2 class="panel-title"><i class="fas fa-sliders-h"></i> Properties</h2>
-                    <div id="properties-editor">
-                        <p class="properties-placeholder">Select a DEX element to edit its properties.</p>
-                    </div>
-                </div>
-                <div class="panel">
-                    <h2 class="panel-title"><i class="fas fa-terminal"></i> Terminal</h2>
-                    <div class="terminal" id="terminal"></div>
-                </div>
-            </aside>
         </main>
     </div>
 
-    <!-- Connect Wallet Modal -->
-    <div class="modal" id="connect-modal">
+    <div id="settings-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title">Connect Wallet</h2>
-                <button class="close-modal">&times;</button>
-            </div>
-            <div class="wallet-option" id="connect-metamask-btn">
-                <i class="fab fa-ethereum wallet-icon"></i>
-                <div><h3>MetaMask</h3><p>Connect using browser extension</p></div>
-            </div>
-            <div class="wallet-option" id="connect-walletconnect-btn">
-                <i class="fas fa-wallet wallet-icon"></i>
-                <div><h3>WalletConnect</h3><p>Connect using mobile wallet</p></div>
-            </div>
-            <div class="wallet-option" id="connect-cli-btn">
-                <i class="fas fa-terminal wallet-icon"></i>
-                <div><h3>CLI Wallet</h3><p>Connect to local node</p></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Admin Controls Modal -->
-    <div class="modal" id="admin-controls-modal">
-        <div class="admin-container">
-            <header class="admin-header">
-                <span>AI-BITBOY-DEX :: STRATEGIC SYNTHESIS CORE</span>
-                <div class="status-indicator">
-                    <div class="status-light"></div>
-                    <span>DATASTREAM ACTIVE</span>
-                </div>
-                 <button class="close-modal admin-close-btn">&times;</button>
+            <header class="modal-header">
+                <h2><i class="fas fa-cog"></i> Settings</h2>
+                <button id="close-modal-btn" class="modal-close-btn" aria-label="Close settings">&times;</button>
             </header>
-            <main class="admin-main-content">
-                <div id="market-intel-panel" class="admin-panel">
-                    <h2 class="admin-panel-title">MARKET INTELLIGENCE FEED</h2>
-                    <div class="intel-grid">
-                        <div class="data-point">
-                            <h3>BTC/USD PRICE</h3>
-                            <p id="admin-btc-price">$0.00</p>
-                        </div>
-                        <div class="data-point">
-                            <h3>24H CHANGE</h3>
-                            <p id="admin-btc-change" class="positive">+0.00%</p>
-                        </div>
-                        <div class="data-point">
-                            <h3>24H VOLUME</h3>
-                            <p id="admin-btc-volume">$0.0B</p>
-                        </div>
-                        <div class="data-point">
-                            <h3>SENTIMENT INDEX</h3>
-                            <p id="admin-sentiment" class="positive">50 (Neutral)</p>
-                        </div>
+            <div class="modal-body">
+                <section class="settings-section">
+                    <h3>Model Parameters</h3>
+                    <div class="form-group">
+                        <label for="temperature-slider">Temperature: <span id="temperature-value">0.5</span></label>
+                        <input type="range" id="temperature-slider" min="0" max="1" step="0.1" value="0.5">
                     </div>
-                    <div class="news-feed">
-                        <h3>KEY HEADLINE</h3>
-                        <p id="admin-news-item" class="news-item">LOADING LATEST INTEL...</p>
+                    <div class="form-group">
+                        <label for="top-p-slider">Top-P: <span id="top-p-value">0.95</span></label>
+                        <input type="range" id="top-p-slider" min="0" max="1" step="0.05" value="0.95">
                     </div>
-                    <div class="benchmark-quota">
-                        <h3>SYSTEM BENCHMARK QUOTA</h3>
-                        <div class="quota-slider-container">
-                           <span>PRIVACY</span>
-                           <input type="range" min="0" max="100" value="50" class="quota-slider" id="admin-benchmark-slider">
-                           <span>SECURITY</span>
-                        </div>
-                        <p id="admin-benchmark-value">Privacy 50% / Security 50%</p>
+                     <div class="form-group">
+                        <label for="top-k-slider">Top-K: <span id="top-k-value">40</span></label>
+                        <input type="range" id="top-k-slider" min="1" max="100" step="1" value="40">
                     </div>
-                </div>
-                <div id="ai-synthesis-panel" class="admin-panel">
-                    <h2 class="admin-panel-title">AI DIRECTIVE SYNTHESIS</h2>
-                    <div id="admin-directive-output" class="placeholder">Awaiting synthesis command... Standby for market analysis and actionable directives.</div>
-                </div>
-            </main>
-            <footer class="admin-footer">
-                <button id="admin-synthesize-btn">SYNTHESIZE DIRECTIVE</button>
+                </section>
+                 <section class="settings-section">
+                    <h3>Memory Configuration</h3>
+                    <div class="form-group">
+                        <label for="context-messages-input">Standard Memory Messages</label>
+                        <input type="number" id="context-messages-input" min="0" max="20" value="6">
+                    </div>
+                    <div class="form-group">
+                        <label for="prioritized-context-input">Prioritized Memory Messages</label>
+                        <input type="number" id="prioritized-context-input" min="0" max="20" value="5">
+                    </div>
+                </section>
+            </div>
+            <footer class="modal-footer">
+                <button id="cancel-settings-btn" class="modal-btn secondary-btn">Cancel</button>
+                <button id="save-settings-btn" class="modal-btn primary-btn">Save Settings</button>
             </footer>
         </div>
     </div>
-
-    <!-- Right-click Context Menu -->
-    <div class="context-menu" id="component-context-menu" style="display: none;">
-        <ul>
-            <li data-action="edit"><i class="fas fa-pencil-alt"></i> Edit Properties</li>
-            <li data-action="duplicate"><i class="fas fa-clone"></i> Duplicate</li>
-            <li data-action="delete"><i class="fas fa-trash-alt"></i> Delete</li>
-        </ul>
-    </div>
-    
-    <script type="module" src="index.tsx"></script>
 </body>
 </html>
