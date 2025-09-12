@@ -65,16 +65,51 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 3000);
     }
 
-    function connectWallet() {
-        isWalletConnected = true;
-        walletInfo.style.display = 'flex';
-        connectBtn.style.display = 'none';
-        disconnectBtn.style.display = 'flex';
-        walletStatus.classList.add('connected');
-        walletStatus.classList.remove('disconnected');
-        logToTerminal('Wallet connected successfully.', 'success');
-        updateSwapButton();
-        connectModal.style.display = 'none';
+    function simulateCliWalletConnection(): Promise<{ address: string; balance: number }> {
+        logToTerminal('Establishing connection to CLI wallet...');
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                // Simulate a 90% success rate
+                if (Math.random() > 0.1) {
+                    const address = '0x' + Array(40).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('');
+                    const balance = Math.random() * 5.2; // Simulate a balance between 0 and 5.2 ETH
+                    resolve({ address, balance });
+                } else {
+                    reject(new Error('Connection timed out or was rejected by the user.'));
+                }
+            }, 1500);
+        });
+    }
+
+    async function connectWallet() {
+        logToTerminal('Attempting wallet connection...');
+        connectModal.style.display = 'none'; // Close modal immediately for better UX
+        showToast('Connecting...', 'success');
+
+        try {
+            const walletData = await simulateCliWalletConnection();
+            
+            const headerAddressEl = document.getElementById('header-wallet-address') as HTMLElement;
+            const headerBalanceEl = document.getElementById('header-wallet-balance') as HTMLElement;
+
+            // Format and update UI
+            headerAddressEl.textContent = `${walletData.address.substring(0, 6)}...${walletData.address.substring(walletData.address.length - 4)}`;
+            headerBalanceEl.textContent = `${walletData.balance.toFixed(4)} ETH`;
+
+            isWalletConnected = true;
+            walletInfo.style.display = 'flex';
+            connectBtn.style.display = 'none';
+            disconnectBtn.style.display = 'flex';
+            walletStatus.classList.add('connected');
+            walletStatus.classList.remove('disconnected');
+            logToTerminal(`Wallet connected successfully. Address: ${walletData.address}`, 'success');
+            showToast('Wallet connected!', 'success');
+            updateSwapButton();
+        } catch (error: any) {
+            logToTerminal(`Wallet connection failed: ${error.message}`, 'error');
+            showToast(error.message || 'Connection failed.', 'error');
+            disconnectWallet(); // Ensure UI is in a disconnected state
+        }
     }
 
     function disconnectWallet() {
@@ -84,6 +119,13 @@ document.addEventListener('DOMContentLoaded', function() {
         disconnectBtn.style.display = 'none';
         walletStatus.classList.add('disconnected');
         walletStatus.classList.remove('connected');
+
+        // Reset header info to placeholders
+        const headerAddressEl = document.getElementById('header-wallet-address') as HTMLElement;
+        const headerBalanceEl = document.getElementById('header-wallet-balance') as HTMLElement;
+        headerAddressEl.textContent = '0x1234...5678';
+        headerBalanceEl.textContent = '0.00 ETH';
+
         logToTerminal('Wallet disconnected.');
         updateSwapButton();
     }
