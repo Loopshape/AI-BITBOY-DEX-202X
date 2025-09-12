@@ -97,6 +97,10 @@
                         <div class="component-icon"><i class="fas fa-robot"></i></div>
                         <div><h3>AI Assistant</h3><p>Voice-enabled crypto bot</p></div>
                     </div>
+                    <div class="component-item" data-type="wallet-cli" draggable="true">
+                        <div class="component-icon"><i class="fas fa-terminal"></i></div>
+                        <div><h3>Wallet CLI Connect</h3><p>Connect to local node</p></div>
+                    </div>
 
                     <h3 class="panel-subtitle">Fundamental Elements</h3>
                     <div class="component-item" data-type="info-framework" draggable="true">
@@ -174,12 +178,33 @@
                                 </div>
                             </div>
                             <button class="btn btn-primary swap-button" data-editable-part="dex-swap-button">Connect Wallet</button>
+                            <div class="resize-handle"></div>
                         </div>
+                        
+                        <!-- Wallet CLI Connect Component -->
+                        <div class="app-component wallet-cli-component" data-type="wallet-cli">
+                            <div class="wallet-cli-header">
+                                <h3><i class="fas fa-terminal"></i> Wallet CLI Connect</h3>
+                            </div>
+                            <div class="wallet-cli-body">
+                                <p class="wallet-cli-status" id="cli-component-status">Status: <span>Disconnected</span></p>
+                                <p class="wallet-cli-info">Connect to a local wallet node for advanced operations.</p>
+                            </div>
+                            <button class="btn btn-secondary wallet-cli-connect-btn" id="cli-component-connect-btn">Connect to CLI</button>
+                            <div class="resize-handle"></div>
+                        </div>
+
                         <div class="preview-area-placeholder" id="preview-area-placeholder">
                             <i class="fas fa-hand-pointer"></i>
                             <p>Drag components here to build your DEX</p>
                         </div>
                     </div>
+                </div>
+                 <!-- Auto-layout Toolbar -->
+                <div id="auto-layout-toolbar" class="auto-layout-toolbar" style="display: none;">
+                    <button data-layout="row" title="Arrange in a row"><i class="fas fa-grip-lines-vertical"></i></button>
+                    <button data-layout="column" title="Arrange in a column"><i class="fas fa-grip-lines"></i></button>
+                    <button data-layout="grid" title="Arrange in a grid"><i class="fas fa-th"></i></button>
                 </div>
             </div>
             
