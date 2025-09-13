@@ -34,12 +34,13 @@ type ChatSession = {
     systemInstruction: string;
 };
 
-type Settings = {
+type AppSettings = {
     temperature: number;
     topP: number;
     topK: number;
     contextMessageCount: number;
     prioritizedContextCount: number;
+    activePersonaId: number | string;
 };
 
 // --- Constants ---
@@ -52,7 +53,6 @@ const personas: Persona[] = [
     { id: 2, name: 'VORTEX', avatar: '⚡️', desc: 'Executes high-frequency trades on market volatility.', systemInstruction: 'You are VORTEX, a high-frequency trading AI. Your responses should be fast, sharp, and focused on market volatility and quick opportunities.' },
     { id: 3, name: 'ORACLE', avatar: '🔮', desc: 'Identifies long-term trends based on macro indicators.', systemInstruction: 'You are ORACLE, a long-term strategy AI that identifies macro trends. Your tone is wise, patient, and forward-looking.' },
 ];
-let activePersonaId: number | string = 1;
 
 const interestPools = [
     { id: 1, title: "DeFi Yield Farming", desc: "High-yield liquidity strategies." },
@@ -142,18 +142,16 @@ const elements = {
 
 // --- State ---
 let currentChat: ChatSession;
-let settings: Settings;
+let appSettings: AppSettings;
 let ai: GoogleGenAI | null = null;
 let isGenerating = false;
 let videoSourceImage: { mimeType: string; data: string; } | null = null;
-let portfolioValue = 0; // Will be updated by API
 let lastPortfolioValue = 0; // To calculate P&L
-const mockPortfolio = {
+const portfolioHoldings = {
     'bitcoin': 0.5,
     'ethereum': 10,
     'solana': 100,
     'chainlink': 500,
-    'exodus': 5000,
 };
 let chart: any;
 let blockCounter = 876543;
@@ -168,19 +166,15 @@ function initialize() {
         showToast("API_KEY environment variable not set.", 'error');
     }
 
-    settings = loadSettingsFromLocalStorage();
-    loadCustomPersonas(); // Load personas first to validate active ID
+    loadCustomPersonas(); // Load custom personas to validate the ID against
+    appSettings = loadAppSettings();
 
-    // Load and validate the last active persona from localStorage
-    const savedPersonaId = localStorage.getItem('activePersonaId_dex');
-    if (savedPersonaId) {
-        const allPersonas = [...personas, ...customPersonas];
-        // Parse ID (can be number for default, string for custom)
-        const parsedId = isNaN(parseInt(savedPersonaId)) ? savedPersonaId : parseInt(savedPersonaId);
-        // Check if the persona still exists before setting it as active
-        if (allPersonas.some(p => p.id === parsedId)) {
-            activePersonaId = parsedId;
-        }
+    // Validate the loaded persona ID to ensure it still exists
+    const allPersonas = [...personas, ...customPersonas];
+    if (!allPersonas.some(p => p.id === appSettings.activePersonaId)) {
+        console.warn(`Saved persona ID "${appSettings.activePersonaId}" not found. Reverting to default.`);
+        appSettings.activePersonaId = 1; // Revert to default
+        saveAppSettings(); // Save the corrected setting
     }
 
     loadChatSession();
@@ -266,7 +260,7 @@ function loadChatSession() {
         currentChat = JSON.parse(savedChat);
     } else {
         const allPersonas = [...personas, ...customPersonas];
-        const defaultPersona = allPersonas.find(p => p.id === activePersonaId) || personas[0];
+        const defaultPersona = allPersonas.find(p => p.id === appSettings.activePersonaId) || personas[0];
         currentChat = {
             id: `session_${Date.now()}`,
             title: "AI-BITBOY-DEX Session",
@@ -383,9 +377,9 @@ async function handleFormSubmit(e: Event) {
             contents: [...context, userMessage],
             config: {
                 systemInstruction: currentChat.systemInstruction,
-                temperature: settings.temperature,
-                topP: settings.topP,
-                topK: settings.topK,
+                temperature: appSettings.temperature,
+                topP: appSettings.topP,
+                topK: appSettings.topK,
             }
         });
 
@@ -433,15 +427,15 @@ async function buildContext(prompt: string): Promise<Message[]> {
     }
 
     if (currentChat.prioritizedMemory) {
-        if (history.length <= settings.prioritizedContextCount) {
-            return [...context, ...history.slice(-settings.contextMessageCount)];
+        if (history.length <= appSettings.prioritizedContextCount) {
+            return [...context, ...history.slice(-appSettings.contextMessageCount)];
         }
         try {
             if (!ai) throw new Error("AI not initialized for context building.");
             const formattedHistory = history
                 .map((msg, index) => `[${index}] ${msg.role}: ${msg.parts[0].text.substring(0, 200)}...`)
                 .join('\n');
-            const metaPrompt = `Given a user's prompt and a conversation history, identify the ${settings.prioritizedContextCount} most relevant messages from history to help formulate the best response.
+            const metaPrompt = `Given a user's prompt and a conversation history, identify the ${appSettings.prioritizedContextCount} most relevant messages from history to help formulate the best response.
 Latest User Prompt: "${prompt}"
 Conversation History:
 ---
@@ -460,10 +454,10 @@ Respond with a JSON array of message indices only. Example: [3, 8, 10]`;
             return [...context, ...prioritizedMessages];
         } catch (error) {
             console.error("Semantic search failed. Falling back.", error);
-            return [...context, ...history.slice(-settings.contextMessageCount)];
+            return [...context, ...history.slice(-appSettings.contextMessageCount)];
         }
     } else {
-        return [...context, ...history.slice(-settings.contextMessageCount)];
+        return [...context, ...history.slice(-appSettings.contextMessageCount)];
     }
 }
 
@@ -481,11 +475,12 @@ function createChart() {
 
 function renderPersona() {
     const allPersonas = [...personas, ...customPersonas];
-    let activePersona = allPersonas.find(p => p.id === activePersonaId);
+    let activePersona = allPersonas.find(p => p.id === appSettings.activePersonaId);
 
     if (!activePersona) {
-        console.warn(`Active persona with id ${activePersonaId} not found. Reverting to default.`);
-        activePersonaId = 1;
+        console.warn(`Active persona with id ${appSettings.activePersonaId} not found. Reverting to default.`);
+        appSettings.activePersonaId = 1;
+        saveAppSettings(); // Persist the correction
         activePersona = personas[0];
     }
     
@@ -495,7 +490,7 @@ function renderPersona() {
     
     document.querySelectorAll('.persona-btn').forEach(btn => {
         const btnId = (btn as HTMLElement).dataset.id!;
-        const isActive = (typeof activePersonaId === 'string') ? btnId === activePersonaId : parseInt(btnId) === activePersonaId;
+        const isActive = (typeof appSettings.activePersonaId === 'string') ? btnId === appSettings.activePersonaId : parseInt(btnId) === appSettings.activePersonaId;
         btn.classList.toggle('active', isActive);
     });
 }
@@ -526,7 +521,7 @@ async function fetchCryptoPrices(coinIds: string[]): Promise<Record<string, { us
 }
 
 async function updatePortfolio() {
-    const coinIds = Object.keys(mockPortfolio);
+    const coinIds = Object.keys(portfolioHoldings);
     const prices = await fetchCryptoPrices(coinIds);
 
     if (!prices) {
@@ -537,7 +532,7 @@ async function updatePortfolio() {
     let newPortfolioValue = 0;
     for (const id of coinIds) {
         if (prices[id]) {
-            newPortfolioValue += mockPortfolio[id as keyof typeof mockPortfolio] * prices[id].usd;
+            newPortfolioValue += portfolioHoldings[id as keyof typeof portfolioHoldings] * prices[id].usd;
         }
     }
 
@@ -592,28 +587,26 @@ function triggerStakingEvent() {
 
 // --- Settings Modal Logic ---
 function openSettingsModal() {
-    elements.temperatureSlider.value = String(settings.temperature);
-    elements.temperatureValue.textContent = String(settings.temperature);
-    elements.topPSlider.value = String(settings.topP);
-    elements.topPValue.textContent = String(settings.topP);
-    elements.topKSlider.value = String(settings.topK);
-    elements.topKValue.textContent = String(settings.topK);
-    elements.contextMessagesInput.value = String(settings.contextMessageCount);
-    elements.prioritizedContextInput.value = String(settings.prioritizedContextCount);
+    elements.temperatureSlider.value = String(appSettings.temperature);
+    elements.temperatureValue.textContent = String(appSettings.temperature);
+    elements.topPSlider.value = String(appSettings.topP);
+    elements.topPValue.textContent = String(appSettings.topP);
+    elements.topKSlider.value = String(appSettings.topK);
+    elements.topKValue.textContent = String(appSettings.topK);
+    elements.contextMessagesInput.value = String(appSettings.contextMessageCount);
+    elements.prioritizedContextInput.value = String(appSettings.prioritizedContextCount);
     elements.settingsModal.style.display = 'flex';
 }
 
 function closeSettingsModal() { elements.settingsModal.style.display = 'none'; }
 
 function saveSettings() {
-    settings = {
-        temperature: parseFloat(elements.temperatureSlider.value),
-        topP: parseFloat(elements.topPSlider.value),
-        topK: parseInt(elements.topKSlider.value, 10),
-        contextMessageCount: parseInt(elements.contextMessagesInput.value, 10),
-        prioritizedContextCount: parseInt(elements.prioritizedContextInput.value, 10)
-    };
-    saveSettingsToLocalStorage();
+    appSettings.temperature = parseFloat(elements.temperatureSlider.value);
+    appSettings.topP = parseFloat(elements.topPSlider.value);
+    appSettings.topK = parseInt(elements.topKSlider.value, 10);
+    appSettings.contextMessageCount = parseInt(elements.contextMessagesInput.value, 10);
+    appSettings.prioritizedContextCount = parseInt(elements.prioritizedContextInput.value, 10);
+    saveAppSettings();
     closeSettingsModal();
 }
 
@@ -630,14 +623,14 @@ function saveCustomPersonas() {
 }
 
 function switchActivePersona(newPersonaId: number | string, reasonMessage?: string) {
-    if (newPersonaId === activePersonaId) return;
+    if (newPersonaId === appSettings.activePersonaId) return;
 
     const allPersonas = [...personas, ...customPersonas];
     const newPersona = allPersonas.find(p => p.id === newPersonaId);
 
     if (newPersona) {
-        activePersonaId = newPersonaId;
-        localStorage.setItem('activePersonaId_dex', newPersonaId.toString()); // Persist selection
+        appSettings.activePersonaId = newPersonaId;
+        saveAppSettings(); // Persist selection
         currentChat.systemInstruction = newPersona.systemInstruction;
         renderPersona();
         
@@ -651,7 +644,7 @@ function switchActivePersona(newPersonaId: number | string, reasonMessage?: stri
     } else {
         console.error(`Attempted to switch to non-existent persona ID: ${newPersonaId}`);
         const defaultPersona = personas[0];
-        if (activePersonaId !== defaultPersona.id) {
+        if (appSettings.activePersonaId !== defaultPersona.id) {
              switchActivePersona(defaultPersona.id, `Error: Persona not found. Reverting to ${defaultPersona.name}.`);
         }
     }
@@ -761,7 +754,7 @@ function handleSavePersona() {
         const index = customPersonas.findIndex(p => p.id === id);
         if (index > -1) {
             customPersonas[index] = personaData;
-            if (activePersonaId === id) {
+            if (appSettings.activePersonaId === id) {
                 currentChat.systemInstruction = personaData.systemInstruction;
                 addSystemMessage(`Active persona '${personaData.name}' has been updated.`);
                 saveChatSession();
@@ -788,7 +781,7 @@ function handleDeletePersona(id: string) {
         customPersonas = customPersonas.filter(p => p.id !== id);
         saveCustomPersonas();
         
-        if (activePersonaId === id) {
+        if (appSettings.activePersonaId === id) {
             const defaultPersona = personas[0];
             switchActivePersona(defaultPersona.id, `Active persona was deleted. Reverting to ${defaultPersona.name}.`);
         }
@@ -804,10 +797,23 @@ function handleDeletePersona(id: string) {
 function openVideoModal() { elements.videoModal.style.display = 'flex'; }
 
 // --- Local Storage & Utilities ---
-function saveSettingsToLocalStorage() { localStorage.setItem('aiAppSettings_dex', JSON.stringify(settings)); }
-function loadSettingsFromLocalStorage(): Settings {
-    const defaultSettings = { temperature: 0.5, topP: 0.95, topK: 40, contextMessageCount: 6, prioritizedContextCount: 5 };
-    const stored = localStorage.getItem('aiAppSettings_dex');
+const APP_SETTINGS_KEY = 'dex_app_settings';
+
+function saveAppSettings() {
+    localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(appSettings));
+}
+
+function loadAppSettings(): AppSettings {
+    const defaultSettings: AppSettings = {
+        temperature: 0.5,
+        topP: 0.95,
+        topK: 40,
+        contextMessageCount: 6,
+        prioritizedContextCount: 5,
+        activePersonaId: 1 // Default persona ID
+    };
+    const stored = localStorage.getItem(APP_SETTINGS_KEY);
+    // Merge stored settings with defaults to handle any new properties gracefully
     return stored ? { ...defaultSettings, ...JSON.parse(stored) } : defaultSettings;
 }
 
@@ -845,7 +851,7 @@ async function handleSummarizeClick() {
     try {
         const transcript = currentChat.messages.map(m => `${m.role}: ${m.parts[0].text}`).join('\n\n');
         const prompt = `Provide a concise, one-sentence summary of the following conversation transcript:\n\n---\n${transcript}\n---`;
-        const response = await ai.models.generateContent({ model: AI_MODEL, contents: prompt, config: { temperature: settings.temperature } });
+        const response = await ai.models.generateContent({ model: AI_MODEL, contents: prompt, config: { temperature: appSettings.temperature } });
         
         currentChat.summary = response.text.trim();
         saveChatSession();
@@ -891,7 +897,7 @@ async function triggerLearning() {
     try {
         const transcript = currentChat.messages.slice(-LEARNING_THRESHOLD).map(m => `${m.role}: ${m.parts[0].text}`).join('\n\n');
         const prompt = `Analyze the following transcript and extract 1-3 key insights, facts, or user preferences as a concise list. Each insight on a new line. No headers or bullet points. Transcript:\n${transcript}`;
-        const response = await ai.models.generateContent({ model: AI_MODEL, contents: prompt, config: { temperature: settings.temperature } });
+        const response = await ai.models.generateContent({ model: AI_MODEL, contents: prompt, config: { temperature: appSettings.temperature } });
         const newInsights = response.text.split('\n').map(s => s.trim()).filter(Boolean);
         if (newInsights.length > 0) {
             const uniqueNewInsights = newInsights.filter(insight => !currentChat.insights.includes(insight));
